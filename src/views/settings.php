@@ -57,6 +57,7 @@
 							<?php $this->render_resize() ?>
 						</td>
 					</tr>
+					<?php $this->render_backup() ?>
 				</tbody>
 			</table>
 			<p><?php echo Tiny_Plugin::request_review();?></p>

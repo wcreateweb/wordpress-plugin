@@ -540,6 +540,13 @@ class Tiny_Settings extends Tiny_WP_Base {
 		echo '</div>';
 	}
 
+	/**
+	 * Renders the back-up section on the settings page.
+	 */
+	public function render_backup() {
+		include_once( dirname( __FILE__ ) . '/views/settings-backup.php' );
+	}
+
 	private function render_size_checkboxes( $size, $option ) {
 		$id = self::get_prefixed_name( "sizes_$size" );
 		$name = self::get_prefixed_name( 'sizes[' . $size . ']' );
