@@ -19,7 +19,7 @@
 */
 
 abstract class Tiny_WP_Base {
-	const NAME = 'tiny-compress-images';
+	const NAME   = 'tiny-compress-images';
 	const PREFIX = 'tinypng_';
 
 	private static $wp_version;

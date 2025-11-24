@@ -20,9 +20,9 @@
 
 abstract class Tiny_Compress {
 
-	const KEY_MISSING = 'Register an account or provide an API key first';
+	const KEY_MISSING  = 'Register an account or provide an API key first';
 	const FILE_MISSING = 'File does not exist';
-	const WRITE_ERROR = 'No permission to write to file';
+	const WRITE_ERROR  = 'No permission to write to file';
 
 	protected $after_compress_callback;
 
@@ -67,12 +67,12 @@ abstract class Tiny_Compress {
 	public function get_status() {
 		if ( $this->get_key() == null ) {
 			return (object) array(
-				'ok' => false,
+				'ok'      => false,
 				'message' => self::KEY_MISSING,
 			);
 		}
 
-		$result = false;
+		$result  = false;
 		$message = null;
 
 		try {
@@ -88,7 +88,7 @@ abstract class Tiny_Compress {
 		$this->call_after_compress_callback();
 
 		return (object) array(
-			'ok' => $result,
+			'ok'      => $result,
 			'message' => $message,
 		);
 	}
@@ -205,14 +205,14 @@ abstract class Tiny_Compress {
 
 		if ( $total > 10000 ) {
 			$compressions = $total - 10000;
-			$cost += $compressions * 0.002;
-			$total -= $compressions;
+			$cost        += $compressions * 0.002;
+			$total       -= $compressions;
 		}
 
 		if ( $total > 500 ) {
 			$compressions = $total - 500;
-			$cost += $compressions * 0.009;
-			$total -= $compressions;
+			$cost        += $compressions * 0.009;
+			$total       -= $compressions;
 		}
 
 		return $cost;

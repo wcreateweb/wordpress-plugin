@@ -31,7 +31,7 @@ if ( ! defined( '\Tinify\VERSION' ) ) {
 class Tiny_Compress_Client extends Tiny_Compress {
 
 	private $last_error_code = 0;
-	private $last_message = '';
+	private $last_message    = '';
 	private $proxy;
 
 	protected function __construct( $api_key, $after_compress_callback ) {
@@ -104,17 +104,17 @@ class Tiny_Compress_Client extends Tiny_Compress {
 			}
 
 			$compress_result = $source->result();
-			$meta = array(
-				'input' => array(
+			$meta            = array(
+				'input'  => array(
 					'size' => strlen( $input ),
 					'type' => Tiny_Helpers::get_mimetype( $input ),
 				),
 				'output' => array(
-					'size' => $compress_result->size(),
-					'type' => $compress_result->mediaType(),
-					'width' => $compress_result->width(),
+					'size'   => $compress_result->size(),
+					'type'   => $compress_result->mediaType(),
+					'width'  => $compress_result->width(),
 					'height' => $compress_result->height(),
-					'ratio' => round( $compress_result->size() / strlen( $input ), 4 ),
+					'ratio'  => round( $compress_result->size() / strlen( $input ), 4 ),
 				),
 			);
 
@@ -122,16 +122,18 @@ class Tiny_Compress_Client extends Tiny_Compress {
 			$result = array( $buffer, $meta, null );
 
 			if ( count( $convert_to ) > 0 ) {
-				$convert_source = $source->convert( array(
-					'type' => $convert_to,
-				) );
-				$convert_result = $convert_source->result();
+				$convert_source  = $source->convert(
+					array(
+						'type' => $convert_to,
+					)
+				);
+				$convert_result  = $convert_source->result();
 				$meta['convert'] = array(
 					'type' => $convert_result->mediaType(),
 					'size' => $convert_result->size(),
 				);
-				$convert_buffer = $convert_result->toBuffer();
-				$result = array( $buffer, $meta, $convert_buffer );
+				$convert_buffer  = $convert_result->toBuffer();
+				$result          = array( $buffer, $meta, $convert_buffer );
 			}
 
 			return $result;
@@ -176,17 +178,17 @@ class Tiny_Compress_Client extends Tiny_Compress {
 			$file = fopen( dirname( __FILE__ ) . '/curl.log', 'w' );
 			if ( is_resource( $file ) ) {
 				$options[ CURLOPT_VERBOSE ] = true;
-				$options[ CURLOPT_STDERR ] = $file;
+				$options[ CURLOPT_STDERR ]  = $file;
 			}
 		}
 
 		if ( $this->proxy->is_enabled() && $this->proxy->send_through_proxy( $url ) ) {
 			$options[ CURLOPT_PROXYTYPE ] = CURLPROXY_HTTP;
-			$options[ CURLOPT_PROXY ] = $this->proxy->host();
+			$options[ CURLOPT_PROXY ]     = $this->proxy->host();
 			$options[ CURLOPT_PROXYPORT ] = $this->proxy->port();
 
 			if ( $this->proxy->use_authentication() ) {
-				$options[ CURLOPT_PROXYAUTH ] = CURLAUTH_ANY;
+				$options[ CURLOPT_PROXYAUTH ]    = CURLAUTH_ANY;
 				$options[ CURLOPT_PROXYUSERPWD ] = $this->proxy->authentication();
 			}
 		}
