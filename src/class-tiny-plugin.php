@@ -289,9 +289,15 @@ class Tiny_Plugin extends Tiny_WP_Base {
 				'nonce'                  => wp_create_nonce( 'tiny-compress' ),
 				'wpVersion'              => self::wp_version(),
 				'pluginVersion'          => self::version(),
-				'L10nAllDone'            => __( 'All images are processed', 'tiny-compress-images' ),
+				'L10nAllDone'            => __(
+					'All images are processed',
+					'tiny-compress-images'
+				),
 				'L10nNoActionTaken'      => __( 'No action taken', 'tiny-compress-images' ),
-				'L10nDuplicate'          => __( 'Image was already processed', 'tiny-compress-images' ),
+				'L10nDuplicate'          => __(
+					'Image was already processed',
+					'tiny-compress-images'
+				),
 				'L10nBulkAction'         => __( 'Compress Images', 'tiny-compress-images' ),
 				'L10nBulkMarkCompressed' => __( 'Mark as Compressed', 'tiny-compress-images' ),
 				'L10nCancelled'          => __( 'Cancelled', 'tiny-compress-images' ),
@@ -739,9 +745,11 @@ class Tiny_Plugin extends Tiny_WP_Base {
 			true
 		);
 
-		/* This might be deduplicated with the admin script localization, but
-		   the order of including scripts is sometimes different. So in that
-		   case we need to make sure that the order of inclusion is correc.t */
+		/**
+		 * This might be deduplicated with the admin script localization, but
+		 * the order of including scripts is sometimes different. So in that
+		 * case we need to make sure that the order of inclusion is correc.t
+		 */
 		wp_localize_script(
 			self::NAME . '_dashboard_widget',
 			'tinyCompressDashboard',
@@ -813,7 +821,8 @@ class Tiny_Plugin extends Tiny_WP_Base {
 	}
 
 	static function request_review() {
-		$review_url    = 'https://wordpress.org/support/plugin/tiny-compress-images/reviews/#new-post';
+		$review_url    =
+			'https://wordpress.org/support/plugin/tiny-compress-images/reviews/#new-post';
 		$review_block  = esc_html__( 'Enjoying TinyPNG?', 'tiny-compress-images' );
 		$review_block .= ' ';
 		$review_block .= sprintf(

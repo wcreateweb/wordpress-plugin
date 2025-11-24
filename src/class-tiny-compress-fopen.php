@@ -61,8 +61,10 @@ class Tiny_Compress_Fopen extends Tiny_Compress {
 	}
 
 	protected function validate() {
-		$params                                = $this->request_options( 'GET' );
-		$url                                   = Tiny_Config::KEYS_URL . '/' . $this->get_key();
+		$params = $this->request_options( 'GET' );
+
+		$url = Tiny_Config::KEYS_URL . '/' . $this->get_key();
+
 		list($details, $headers, $status_code) = $this->request( $params, $url );
 
 		if ( 429 == $status_code || 400 == $status_code || 200 == $status_code ) {
@@ -83,7 +85,8 @@ class Tiny_Compress_Fopen extends Tiny_Compress {
 	}
 
 	protected function compress( $input, $resize_opts, $preserve_opts, $convert_to ) {
-		$params                                = $this->request_options( 'POST', $input );
+		$params = $this->request_options( 'POST', $input );
+
 		list($details, $headers, $status_code) = $this->request( $params );
 
 		$output_url = isset( $headers['location'] ) ? $headers['location'] : null;
@@ -106,7 +109,8 @@ class Tiny_Compress_Fopen extends Tiny_Compress {
 			);
 		}
 
-		$params                               = $this->output_request_options( $resize_opts, $preserve_opts );
+		$params = $this->output_request_options( $resize_opts, $preserve_opts );
+
 		list($output, $headers, $status_code) = $this->request( $params, $output_url );
 
 		if ( $status_code >= 400 && is_array( $output ) && isset( $output['error'] ) ) {
@@ -161,11 +165,13 @@ class Tiny_Compress_Fopen extends Tiny_Compress {
 				$convert_params,
 				$output_url
 			);
-			$meta['convert']                        = array(
+
+			$meta['convert'] = array(
 				'type' => $convert_headers['content-type'],
 				'size' => strlen( $convert_output ),
 			);
-			$convert                                = $convert_output;
+
+			$convert = $convert_output;
 
 		}
 

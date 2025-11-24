@@ -904,7 +904,11 @@ class Tiny_Settings extends Tiny_WP_Base {
 			}
 
 			try {
-				$site       = str_replace( array( 'http://', 'https://' ), '', get_bloginfo( 'url' ) );
+				$site       = str_replace(
+					array( 'http://', 'https://' ),
+					'',
+					get_bloginfo( 'url' )
+				);
 				$identifier = 'WordPress plugin for ' . $site;
 				$link       = $this->get_absolute_url();
 				$compressor->create_key(
@@ -1005,10 +1009,12 @@ class Tiny_Settings extends Tiny_WP_Base {
 			'</label>';
 		echo '</p>';
 
-		$convertopts_convert_to_name             = self::get_prefixed_name( 'convert_format[convert_to]' );
+		$convertopts_convert_to_name             =
+			self::get_prefixed_name( 'convert_format[convert_to]' );
 		$convertopts_convert_subfields_classname = self::get_prefixed_name( 'convert_fields' );
 		$convertopts_convert_to_id               = self::get_prefixed_name( 'convert_convert_to' );
-		$convertopts_convert_value               = self::get_convert_format_option( 'convert_to', 'smallest' );
+		$convertopts_convert_value               =
+			self::get_convert_format_option( 'convert_to', 'smallest' );
 		$convertopts_convert_disabled            =
 			self::get_conversion_enabled() ? '' : ' disabled="disabled"';
 		echo sprintf(
