@@ -247,7 +247,7 @@ div.tiny-bulk-optimization div.dashboard div.optimize div.progressbar div.progre
 						<?php esc_html_e( 'Statistics based on all available JPEG, PNG, and WebP images in your media library.', 'tiny-compress-images' ); ?>
 					</p>
 					<?php
-						require_once dirname( __FILE__ ) . '/optimization-chart.php';
+						require_once __DIR__ . '/optimization-chart.php';
 					?>
 					<div class="legend">
 						<table>
@@ -294,13 +294,13 @@ div.tiny-bulk-optimization div.dashboard div.optimize div.progressbar div.progre
 			</div>
 			<?php
 			if ( $stats['available-unoptimized-sizes'] > 0 ) {
-				require_once dirname( __FILE__ ) . '/bulk-optimization-form.php';
+				require_once __DIR__ . '/bulk-optimization-form.php';
 			}
 			?>
 		</div>
 		<?php
 		if ( $show_notice ) {
-			require_once dirname( __FILE__ ) . '/bulk-optimization-upgrade-notice.php';
+			require_once __DIR__ . '/bulk-optimization-upgrade-notice.php';
 		}
 		?>
 	</div>

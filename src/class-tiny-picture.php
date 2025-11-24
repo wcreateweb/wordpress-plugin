@@ -225,7 +225,7 @@ abstract class Tiny_Source_Base {
 	 * @return array           Array of matched elements as strings.
 	 */
 	protected function get_element_by_tag( $html, $tagname ) {
-		$results = [];
+		$results = array();
 
 		// Self-closing / void tag (e.g. <source />, <img />, <br />)
 		if ( preg_match_all(

@@ -154,7 +154,7 @@ class Tiny_Notices extends Tiny_WP_Base {
 
 		add_action(
 			'admin_notices',
-			function() use ( $css, $name, $plugin_name, $message, $add ) {
+			function () use ( $css, $name, $plugin_name, $message, $add ) {
 				echo '<div class="' . $css . '" data-name="' . $name . '"><p>' .
 					$plugin_name . ': ' . $message . $add . '</div>';
 			}
@@ -295,7 +295,7 @@ class Tiny_Notices extends Tiny_WP_Base {
 
 		add_action(
 			'admin_notices',
-			function() use ( $notice ) {
+			function () use ( $notice ) {
 				echo $notice;
 			}
 		);

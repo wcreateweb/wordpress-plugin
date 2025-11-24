@@ -30,12 +30,12 @@ class Tiny_Image {
 	private $statistics = array();
 
 	public function __construct(
-			$settings,
-			$id,
-			$wp_metadata = null,
-			$tiny_metadata = null,
-			$active_sizes = null,
-			$active_tinify_sizes = null
+		$settings,
+		$id,
+		$wp_metadata = null,
+		$tiny_metadata = null,
+		$active_sizes = null,
+		$active_tinify_sizes = null
 	) {
 		$this->settings    = $settings;
 		$this->id          = $id;
@@ -52,7 +52,7 @@ class Tiny_Image {
 
 		if ( ! is_array( $this->wp_metadata ) || ! isset( $this->wp_metadata['file'] ) ) {
 			/* No file metadata found, this might be another plugin messing with
-			   metadata. Simply ignore this! */
+				metadata. Simply ignore this! */
 			return;
 		}
 
@@ -64,7 +64,7 @@ class Tiny_Image {
 		}
 
 		/* Do not use pathinfo for getting the filename.
-			 It doesn't work when the filename starts with a special character. */
+			It doesn't work when the filename starts with a special character. */
 		$path_parts                    = explode( '/', $this->wp_metadata['file'] );
 		$this->name                    = end( $path_parts );
 		$filename                      = $path_prefix . $this->name;
@@ -226,10 +226,10 @@ class Tiny_Image {
 						$convert_to;
 
 					$size->add_tiny_meta( $response );
-					$success++;
+					++$success;
 				} catch ( Tiny_Exception $e ) {
 					$size->add_tiny_meta_error( $e );
-					$failed++;
+					++$failed;
 				}
 				$this->add_wp_metadata( $size_name, $size );
 				$this->update_tiny_post_meta();
@@ -385,7 +385,7 @@ class Tiny_Image {
 
 			foreach ( $methods as $method ) {
 				if ( $this->sizes[ $size ]->$method() ) {
-					$stats[ $method ]++;
+					++$stats[ $method ];
 				}
 			}
 		}
@@ -455,11 +455,11 @@ class Tiny_Image {
 					if ( $size->modified() ) {
 						$this->statistics['compressed_total_size'] += $file_size;
 						if ( $is_active_size ) {
-							$this->statistics['available_uncompressed_sizes']++;
+							++$this->statistics['available_uncompressed_sizes'];
 						}
 					} else {
 						$this->statistics['compressed_total_size'] += $output_size;
-						$this->statistics['image_sizes_compressed']++;
+						++$this->statistics['image_sizes_compressed'];
 					}
 				} else {
 					$this->statistics['compressed_total_size'] += $input_size;
@@ -468,15 +468,15 @@ class Tiny_Image {
 				$this->statistics['initial_total_size']    += $file_size;
 				$this->statistics['compressed_total_size'] += $file_size;
 				if ( $is_active_size ) {
-					$this->statistics['available_uncompressed_sizes']++;
+					++$this->statistics['available_uncompressed_sizes'];
 				}
 			}
 
 			if ( $is_active_size ) {
 				if ( $size->has_been_converted() ) {
-					$this->statistics['image_sizes_converted']++;
+					++$this->statistics['image_sizes_converted'];
 				} else {
-					$this->statistics['available_unconverted_sizes']++;
+					++$this->statistics['available_unconverted_sizes'];
 				}
 			}
 		}// End foreach().
@@ -525,7 +525,6 @@ class Tiny_Image {
 		}
 
 		return $convert_settings['convert_to'];
-
 	}
 
 	/**

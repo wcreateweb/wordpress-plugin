@@ -6,7 +6,7 @@ if ( isset( $stats ) ) {
 		$chart['percentage'] = $stats['display-percentage'];
 } else {
 	$chart['percentage'] = 0;
-};
+}
 
 $chart['size']            = 160;
 $chart['radius']          = $chart['size'] / 2 * 0.9;

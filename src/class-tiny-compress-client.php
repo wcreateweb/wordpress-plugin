@@ -20,12 +20,12 @@
 
 if ( ! defined( '\Tinify\VERSION' ) ) {
 	/* Load vendored client if it is not yet loaded. */
-	require_once dirname( __FILE__ ) . '/vendor/tinify/Tinify/Exception.php';
-	require_once dirname( __FILE__ ) . '/vendor/tinify/Tinify/ResultMeta.php';
-	require_once dirname( __FILE__ ) . '/vendor/tinify/Tinify/Result.php';
-	require_once dirname( __FILE__ ) . '/vendor/tinify/Tinify/Source.php';
-	require_once dirname( __FILE__ ) . '/vendor/tinify/Tinify/Client.php';
-	require_once dirname( __FILE__ ) . '/vendor/tinify/Tinify.php';
+	require_once __DIR__ . '/vendor/tinify/Tinify/Exception.php';
+	require_once __DIR__ . '/vendor/tinify/Tinify/ResultMeta.php';
+	require_once __DIR__ . '/vendor/tinify/Tinify/Result.php';
+	require_once __DIR__ . '/vendor/tinify/Tinify/Source.php';
+	require_once __DIR__ . '/vendor/tinify/Tinify/Client.php';
+	require_once __DIR__ . '/vendor/tinify/Tinify.php';
 }
 
 class Tiny_Compress_Client extends Tiny_Compress {
@@ -169,13 +169,13 @@ class Tiny_Compress_Client extends Tiny_Compress {
 
 	private function set_request_options( $client ) {
 		/* The client does not let us override cURL properties yet, so we have
-           to use a reflection property. */
+			to use a reflection property. */
 		$property = new ReflectionProperty( $client, 'options' );
 		$property->setAccessible( true );
 		$options = $property->getValue( $client );
 
 		if ( TINY_DEBUG ) {
-			$file = fopen( dirname( __FILE__ ) . '/curl.log', 'w' );
+			$file = fopen( __DIR__ . '/curl.log', 'w' );
 			if ( is_resource( $file ) ) {
 				$options[ CURLOPT_VERBOSE ] = true;
 				$options[ CURLOPT_STDERR ]  = $file;

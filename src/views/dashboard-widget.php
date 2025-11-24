@@ -94,4 +94,4 @@ div#tinypng_dashboard_widget div#optimization-chart svg circle.main {
 	</p>
 </div>
 
-<?php require_once dirname( __FILE__ ) . '/optimization-chart.php'; ?>
+<?php require_once __DIR__ . '/optimization-chart.php'; ?>

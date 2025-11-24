@@ -295,7 +295,7 @@ class Tiny_Compress_Fopen extends Tiny_Compress {
 	}
 
 	private static function get_ca_file() {
-		return dirname( __FILE__ ) . '/data/cacert.pem';
+		return __DIR__ . '/data/cacert.pem';
 	}
 
 	private static function decode( $text ) {

@@ -33,7 +33,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 
 	public static function version() {
 		/* Avoid using get_plugin_data() because it is not loaded early enough
-			 in xmlrpc.php. */
+			in xmlrpc.php. */
 		return self::VERSION;
 	}
 
@@ -122,7 +122,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		);
 
 		/* When touching any functionality linked to image compressions when
-			 uploading images make sure it also works with XML-RPC. See README. */
+			uploading images make sure it also works with XML-RPC. See README. */
 		add_filter(
 			'wp_ajax_nopriv_tiny_rpc',
 			$this->get_method( 'process_rpc_request' )
@@ -196,7 +196,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		);
 
 		$plugin = plugin_basename(
-			dirname( dirname( __FILE__ ) ) . '/tiny-compress-images.php'
+			dirname( __DIR__, 1 ) . '/tiny-compress-images.php'
 		);
 
 		add_filter(
@@ -692,9 +692,9 @@ class Tiny_Plugin extends Tiny_WP_Base {
 	private function render_compress_details( $tiny_image ) {
 		$in_progress = $tiny_image->filter_image_sizes( 'in_progress' );
 		if ( count( $in_progress ) > 0 ) {
-			include( dirname( __FILE__ ) . '/views/compress-details-processing.php' );
+			include __DIR__ . '/views/compress-details-processing.php';
 		} else {
-			include( dirname( __FILE__ ) . '/views/compress-details.php' );
+			include __DIR__ . '/views/compress-details.php';
 		}
 	}
 
@@ -719,7 +719,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		$is_on_free_plan     = $this->settings->is_on_free_plan();
 		$email_address       = $this->settings->get_email_address();
 
-		include( dirname( __FILE__ ) . '/views/bulk-optimization.php' );
+		include __DIR__ . '/views/bulk-optimization.php';
 	}
 
 	public function add_dashboard_widget() {
@@ -769,7 +769,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 
 	function add_widget_view() {
 		$admin_colors = self::retrieve_admin_colors();
-		include( dirname( __FILE__ ) . '/views/dashboard-widget.php' );
+		include __DIR__ . '/views/dashboard-widget.php';
 	}
 
 	private static function retrieve_admin_colors() {

@@ -13,12 +13,12 @@ $email = trim( $user->user_email );
 		</h4>
 
 		<p class="introduction" class="description">
-		<?php
+			<?php
 			esc_html_e(
 				'Provide your name and email address to start optimizing images.',
 				'tiny-compress-images'
 			);
-		?>
+			?>
 		</p>
 
 		<input type="text" id="tinypng_api_key_name" name="tinypng_api_key_name"
@@ -55,7 +55,7 @@ $email = trim( $user->user_email );
 				),
 				$link
 			);
-		?>
+			?>
 		</p>
 
 		<input type="text" id="<?php echo esc_attr( self::get_prefixed_name( 'api_key' ) ); ?>"

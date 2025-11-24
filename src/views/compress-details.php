@@ -26,7 +26,7 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 		<?php
 		if ( $error ) {
 			// dashicons-warning available for WP 4.3+
-		?>
+			?>
 			<span class="icon dashicons dashicons-no error"></span>
 		<?php } elseif ( $total['missing'] > 0 || $total['modified'] > 0 ) { ?>
 			<span class="icon dashicons dashicons-yes alert"></span>
@@ -65,7 +65,7 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 		<?php
 		if ( $conversion_enabled ) {
 			if ( $total['has_been_converted'] > 0 || 0 == $image_statistics['available_unconverted_sizes'] ) {
-			?>
+				?>
 					<span class="message">
 						<?php
 						printf(
@@ -82,7 +82,7 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 					</span>
 					<br>
 				<?php } ?>
-		<?php if ( $active['unconverted'] > 0 ) { ?>
+			<?php if ( $active['unconverted'] > 0 ) { ?>
 			<span class="message">
 				<?php
 				/* translators: %d: number of sizes to be converted */
@@ -90,10 +90,10 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 				?>
 			</span>
 			<br>
-		<?php
-}
+				<?php
+			}
 		}
-?>
+		?>
 		<?php if ( $size_before - $size_after ) { ?>
 			<span class="message">
 				<?php
@@ -159,7 +159,7 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 				if ( ! is_object( $size ) ) {
 					$size = new Tiny_Image_Size();
 				}
-			?>
+				?>
 				<tr class="<?php echo ( 0 == $i % 2 ) ? 'even' : 'odd'; ?>">
 					<?php
 					echo '<td>';
@@ -216,10 +216,10 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 					?>
 				</tr>
 				<?php
-						$i++;
+						++$i;
 			} // End foreach().
 			if ( $image_statistics['image_sizes_compressed'] > 0 ) {
-			?>
+				?>
 				<tfoot>
 					<tr>
 						<td><?php esc_html_e( 'Combined', 'tiny-compress-images' ); ?></td>
@@ -234,7 +234,7 @@ if ( ! empty( $_REQUEST['ids'] ) ) {
 				</tfoot>
 				<?php
 			}
-						?>
+			?>
 		</table>
 		<p>
 			<strong>

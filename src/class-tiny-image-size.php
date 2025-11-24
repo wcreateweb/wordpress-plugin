@@ -104,7 +104,6 @@ class Tiny_Image_Size {
 				'path' => $this->filename,
 			);
 		}
-
 	}
 
 	public function has_been_compressed() {

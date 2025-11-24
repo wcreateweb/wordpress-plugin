@@ -148,7 +148,7 @@ class Tiny_Settings extends Tiny_WP_Base {
 	}
 
 	public function add_options_to_page() {
-		include( dirname( __FILE__ ) . '/views/settings.php' );
+		include __DIR__ . '/views/settings.php';
 	}
 
 	public function image_sizes_notice() {
@@ -326,7 +326,7 @@ class Tiny_Settings extends Tiny_WP_Base {
 	}
 
 	public function auto_compress_enabled() {
-		return  $this->get_compression_timing() === 'auto' ||
+		return $this->get_compression_timing() === 'auto' ||
 			$this->get_compression_timing() === 'background';
 	}
 
@@ -594,7 +594,7 @@ class Tiny_Settings extends Tiny_WP_Base {
 		echo '</p>';
 		echo '<p>';
 		if ( $resize_original_enabled ) {
-			$active_sizes_count++;
+			++$active_sizes_count;
 		}
 		if ( $compress_wr2x ) {
 			$active_sizes_count *= 2;
@@ -830,9 +830,9 @@ class Tiny_Settings extends Tiny_WP_Base {
 		if ( empty( $key ) ) {
 			$compressor = $this->get_compressor();
 			if ( $compressor->can_create_key() ) {
-				include( dirname( __FILE__ ) . '/views/account-status-create-advanced.php' );
+				include __DIR__ . '/views/account-status-create-advanced.php';
 			} else {
-				include( dirname( __FILE__ ) . '/views/account-status-create-simple.php' );
+				include __DIR__ . '/views/account-status-create-simple.php';
 			}
 		} else {
 			$status          = $this->compressor->get_status();
@@ -850,7 +850,7 @@ class Tiny_Settings extends Tiny_WP_Base {
 					);
 				}
 			}
-			include( dirname( __FILE__ ) . '/views/account-status-connected.php' );
+			include __DIR__ . '/views/account-status-connected.php';
 		}
 	}
 
@@ -859,12 +859,12 @@ class Tiny_Settings extends Tiny_WP_Base {
 		if ( empty( $key ) ) {
 			$compressor = $this->get_compressor();
 			if ( $compressor->can_create_key() ) {
-				include( dirname( __FILE__ ) . '/views/account-status-create-advanced.php' );
+				include __DIR__ . '/views/account-status-create-advanced.php';
 			} else {
-				include( dirname( __FILE__ ) . '/views/account-status-create-simple.php' );
+				include __DIR__ . '/views/account-status-create-simple.php';
 			}
 		} else {
-			include( dirname( __FILE__ ) . '/views/account-status-loading.php' );
+			include __DIR__ . '/views/account-status-loading.php';
 		}
 	}
 

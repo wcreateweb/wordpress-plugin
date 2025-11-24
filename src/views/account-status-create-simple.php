@@ -19,7 +19,7 @@
 				),
 				$link
 			);
-		?>
+			?>
 		</p>
 
 		<input type="text" id="tinypng_api_key"

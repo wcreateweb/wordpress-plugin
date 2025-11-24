@@ -37,7 +37,7 @@ abstract class Tiny_Compress {
 				'NoHttpClient'
 			);
 		}
-		return new $class($api_key, $after_compress_callback);
+		return new $class( $api_key, $after_compress_callback );
 	}
 
 	/* Based on pricing April 2016. */
@@ -53,12 +53,12 @@ abstract class Tiny_Compress {
 		$this->after_compress_callback = $after_compress_callback;
 	}
 
-	public abstract function can_create_key();
-	public abstract function get_compression_count();
-	public abstract function get_remaining_credits();
-	public abstract function get_paying_state();
-	public abstract function get_email_address();
-	public abstract function get_key();
+	abstract public function can_create_key();
+	abstract public function get_compression_count();
+	abstract public function get_remaining_credits();
+	abstract public function get_paying_state();
+	abstract public function get_email_address();
+	abstract public function get_key();
 
 	public function limit_reached() {
 		return $this->get_remaining_credits() === 0;
@@ -167,8 +167,8 @@ abstract class Tiny_Compress {
 		return $details;
 	}
 
-	protected abstract function validate();
-	protected abstract function compress(
+	abstract protected function validate();
+	abstract protected function compress(
 		$input,
 		$resize_options,
 		$preserve_options,

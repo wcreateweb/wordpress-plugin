@@ -27,7 +27,7 @@ abstract class Tiny_WP_Base {
 	public static function wp_version() {
 		if ( is_null( self::$wp_version ) ) {
 			// Try to use unmodified version
-			include( ABSPATH . WPINC . '/version.php' );
+			include ABSPATH . WPINC . '/version.php';
 			if ( isset( $wp_version ) ) {
 				self::$wp_version = $wp_version;
 			} else {

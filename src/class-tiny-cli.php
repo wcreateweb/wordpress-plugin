@@ -90,7 +90,7 @@ class Tiny_Command {
 			try {
 				$result = $this->optimize_attachment( $attachment_id );
 				if ( isset( $result['success'] ) && $result['success'] > 0 ) {
-					$optimized++;
+					++$optimized;
 				}
 			} catch ( Exception $e ) {
 				WP_CLI::warning(

@@ -121,7 +121,7 @@ class Tiny_Bulk_Optimization {
 			);
 			$image_stats = $tiny_image->get_statistics( $active_sizes, $active_tinify_sizes );
 
-			$stats['uploaded-images']++;
+			++$stats['uploaded-images'];
 			$stats['estimated_credit_use'] += $image_stats['available_uncompressed_sizes'];
 			if ( $conversion_enabled ) {
 				$stats['available-unoptimized-sizes'] +=
