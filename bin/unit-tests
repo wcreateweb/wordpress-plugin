@@ -1,2 +1,19 @@
 #!/bin/bash
-vendor/bin/phpunit test/unit $@
+#
+# Runs the unit test suites. The legacy WordPressStubs suite and the new Brain
+# Monkey suite must run in separate PHP processes: Brain Monkey / Patchwork take
+# ownership of the global WordPress functions, which is incompatible with the
+# legacy harness that eval-defines those same functions in the same process.
+#
+# Any extra arguments (e.g. --filter Foo) are passed through to both suites.
+
+# Disable the Xdebug step debugger so test runs don't try (and fail) to connect
+# to a debugging client on every PHP invocation.
+export XDEBUG_MODE=off
+
+status=0
+
+vendor/bin/phpunit -c phpunit.xml "$@" || status=$?
+vendor/bin/phpunit -c phpunit-brain-monkey.xml "$@" || status=$?
+
+exit $status

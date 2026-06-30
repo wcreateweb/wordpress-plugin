@@ -1,150 +1,96 @@
 <?php
 
-require_once dirname(__FILE__) . '/TinyTestCase.php';
-require_once dirname(__FILE__) . '/../../src/class-tiny-cli.php';
+use Yoast\WPTestUtils\BrainMonkey\TestCase;
+use Brain\Monkey\Functions;
+use org\bovigo\vfs\vfsStream;
+use org\bovigo\vfs\content\LargeFileContent;
 
-class Tiny_Cli_Test extends Tiny_TestCase
-{
-	protected $subject;
-	protected $compressor;
+class Tiny_Cli_Test extends TestCase {
+	const UPLOAD_DIR = 'wp-content/uploads';
 
-	public function set_up()
-	{
+	/**
+	 * @var \org\bovigo\vfs\vfsStreamDirectory
+	 */
+	private $vfs;
+
+	protected function set_up() {
 		parent::set_up();
+		$this->vfs = vfsStream::setup();
 	}
 
-	public function test_will_compress_attachments_given_in_params()
-	{
-		$this->wp->stub('get_post_mime_type', function ($i) {
-			return 'image/png';
-		});
-		$this->wp->stub('wp_get_attachment_metadata', function ($i) {
-			return array(
-				'width' => 1256,
-				'height' => 1256,
-				'file' => '2025/07/test.png',
-				'sizes' => array(
-					'thumbnail' => array(
-						'file' => 'test-150x150.png',
-						'width' => 150,
-						'height' => 150,
-						'mime-type' => 'image/png'
-					)
-				),
-			);
-		});
-
-		$virtual_test_image = array(
-			'path' => '2025/07',
-			'images' => array(
-				array(
-					'size' => 137856,
-					'file' => 'test.png',
-				),
-				array(
-					'size' => 37856,
-					'file' => 'test-150x150.jpg',
-				),
-			)
-		);
-		$this->wp->createImagesFromJSON($virtual_test_image);
-
-		$settings = new Tiny_Settings();
-		$mockCompressor = $this->createMock(Tiny_Compress::class);
-
-		$expected = array(
-			'file' => "vfs://root/wp-content/uploads/2025/07/test.png",
-			'resize' => false,
-			'preserve' => array(),
-			'convert_to' => array(),
-		);
-		$mockCompressor->expects($this->once())
-			->method('compress_file')
-			->with(
-				$expected['file'],
-				$expected['resize'],
-				$expected['preserve'],
-				$expected['convert_to']
-			);
-		$settings->set_compressor($mockCompressor);
-
-		$command = new Tiny_Cli($settings);
-
-		$command->optimize(array(), array(
-			"attachments" => '4030',
-		));
-	}
-
-	public function test_will_compress_all_uncompressed_attachments_if_none_given()
-	{
-		// mock db
-		if (!defined('ARRAY_A')) {
-			define('ARRAY_A', 'ARRAY_A');
-		}
-		global $wpdb;
-		$wpdb = $this->getMockBuilder(stdClass::class)
-			->addMethods(['get_results'])
-			->getMock();
-
-		$wpdb->posts = 'wp_posts';
-		$wpdb->postmeta = 'wp_postmeta';
-
-		$mock_results = array(
+	public function test_will_compress_attachments_given_in_params() {
+		Functions\when( 'get_post_mime_type' )->justReturn( 'image/png' );
+		Functions\when( 'wp_get_attachment_metadata' )->justReturn(
 			array(
-				'ID' => 1,
-				'post_title' => 'Test Image',
-				'meta_value' => serialize(array(
-					'width' => 1200,
-					'height' => 800,
-					'file' => '2025/07/test.png',
-					'sizes' => array()
-				)),
-				'unique_attachment_name' => '2025/07/test.png',
-				'tiny_meta_value' => ''
-			)
-		);
-
-		$wpdb->method('get_results')
-			->willReturn($mock_results);
-
-		// create mock image
-		$virtual_test_image = array(
-			'path' => '2025/07',
-			'images' => array(
-				array(
-					'size' => 137856,
-					'file' => 'test.png',
+				'width'  => 1256,
+				'height' => 1256,
+				'file'   => '2025/07/test.png',
+				'sizes'  => array(
+					'thumbnail' => array(
+						'file'      => 'test-150x150.png',
+						'width'     => 150,
+						'height'    => 150,
+						'mime-type' => 'image/png',
+					),
 				),
 			)
 		);
-		$this->wp->createImagesFromJSON($virtual_test_image);
+		$this->create_images(
+			'2025/07',
+			array(
+				'test.png'         => 137856,
+				'test-150x150.jpg' => 37856,
+			)
+		);
 
-		// mock wp_get_attachment_metadata
-		$this->wp->stub('wp_get_attachment_metadata', function ($i) {
-			return array(
-				'width' => 1256,
-				'height' => 1256,
-				'file' => '2025/07/test.png',
-				'sizes' => array(),
-			);
-		});
+		$compressor = $this->createMock( Tiny_Compress::class );
+		$compressor->expects( $this->once() )
+			->method( 'compress_file' )
+			->with( 'vfs://root/wp-content/uploads/2025/07/test.png', false, array(), array() );
 
-		// mock get_post_mime_type
-		$this->wp->stub('get_post_mime_type', function ($i) {
-			return 'image/png';
-		});
-
-		// mock compressor 
 		$settings = new Tiny_Settings();
-		$mockCompressor = $this->createMock(Tiny_Compress::class);
-		$settings->set_compressor($mockCompressor);
+		$settings->set_compressor( $compressor );
 
-		// create assertion
-		$mockCompressor->expects($this->once())
-			->method('compress_file');
+		( new Tiny_Cli( $settings ) )->optimize( array(), array( 'attachments' => '4030' ) );
+	}
 
-		// invoke test
-		$command = new Tiny_Cli($settings);
-		$command->optimize(array(), array());
+	public function test_will_compress_all_uncompressed_attachments_if_none_given() {
+		$this->stub_wordpress();
+		Functions\when( 'get_post_mime_type' )->justReturn( 'image/png' );
+		Functions\when( 'wp_get_attachment_metadata' )->justReturn(
+			array(
+				'width'  => 1256,
+				'height' => 1256,
+				'file'   => '2025/07/test.png',
+				'sizes'  => array(),
+			)
+		);
+		$this->fake_wpdb(
+			array(
+				array(
+					'ID'                     => 1,
+					'post_title'             => 'Test Image',
+					'meta_value'             => serialize(
+						array(
+							'width'  => 1200,
+							'height' => 800,
+							'file'   => '2025/07/test.png',
+							'sizes'  => array(),
+						)
+					),
+					'unique_attachment_name' => '2025/07/test.png',
+					'tiny_meta_value'        => '',
+				),
+			)
+		);
+		$this->create_images( '2025/07', array( 'test.png' => 137856 ) );
+
+		$compressor = $this->createMock( Tiny_Compress::class );
+		$compressor->expects( $this->once() )->method( 'compress_file' );
+
+		$settings = new Tiny_Settings();
+		$settings->set_compressor( $compressor );
+
+		( new Tiny_Cli( $settings ) )->optimize( array(), array() );
 	}
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Test suite for the new Brain Monkey based unit tests.
+
+    These run in a separate phpunit invocation from the legacy suite
+    (phpunit.xml) because Brain Monkey / Patchwork must own the global WordPress
+    functions, which is incompatible with the legacy WordPressStubs harness in
+    the same PHP process.
+
+    Run with:  vendor/bin/phpunit -c phpunit-brain-monkey.xml
+-->
+<phpunit colors="true" bootstrap="./test/bootstrap.php">
+    <testsuites>
+        <testsuite name="Brain Monkey Unit Tests">
+            <file>./test/unit/TinyCliTest.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>

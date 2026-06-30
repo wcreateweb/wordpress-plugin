@@ -4,6 +4,8 @@
     <testsuites>
         <testsuite name="Unit Tests">
             <directory>./test/unit</directory>
+            <!-- new test added here-->
+            <exclude>./test/unit/TinyCliTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
