@@ -8,7 +8,6 @@ require_once dirname( __FILE__ ) . '/../../src/config/class-tiny-config.php';
 require_once dirname( __FILE__ ) . '/../../src/compatibility/wpml/class-tiny-wpml.php';
 require_once dirname( __FILE__ ) . '/../../src/compatibility/as3cf/class-tiny-as3cf.php';
 require_once dirname( __FILE__ ) . '/../../src/compatibility/woocommerce/class-tiny-woocommerce.php';
-require_once 'vendor/autoload.php';
 
 use org\bovigo\vfs\vfsStream;
 use \PHPUnit\Framework\TestCase;

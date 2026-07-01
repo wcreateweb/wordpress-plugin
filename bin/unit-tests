@@ -1,2 +1,3 @@
 #!/bin/bash
-vendor/bin/phpunit test/unit $@
+vendor/bin/phpunit $@ -c phpunit.xml
+vendor/bin/phpunit $@ -c phpunit_v2.xml

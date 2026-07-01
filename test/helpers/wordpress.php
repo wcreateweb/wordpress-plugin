@@ -1,6 +1,5 @@
 <?php
 
-define('ABSPATH', dirname(__FILE__) . '/../');
 define('WPINC', 'wp-includes-for-tests');
 if (! defined('HOUR_IN_SECONDS')) {
 	define('HOUR_IN_SECONDS', 3600);
@@ -310,8 +309,10 @@ class WordPressStubs
 		}
 		$dir = $this->vfs->getChild(self::UPLOAD_DIR . "/$path");
 
+		$file = new LargeFileContent($file_size);
+		$file->write( "\x89PNG\r\n\x1a\n" ); // png signature
 		vfsStream::newFile($name)
-			->withContent(new LargeFileContent($file_size))
+			->withContent($file)
 			->at($dir);
 	}
 

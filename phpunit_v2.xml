@@ -5,10 +5,9 @@
         <env name="XDEBUG_MODE" value="off" />
     </php>
     <testsuites>
-        <testsuite name="Unit Tests">
-            <directory>./test/unit</directory>
-            <exclude>./test/unit/TinyCompressTest.php</exclude>
-            <exclude>./test/unit/TinyLoggerTest.php</exclude>
+        <testsuite name="Unit Tests V2">
+            <file>./test/unit/TinyCompressTest.php</file>
+            <file>./test/unit/TinyLoggerTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

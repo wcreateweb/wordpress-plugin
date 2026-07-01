@@ -1,12 +1,11 @@
 <?php
 
+define('ABSPATH', dirname(__FILE__) . '/');
+define( 'FS_CHMOD_FILE', 0644 );
+
 require_once dirname( __FILE__ ) . '/../vendor/autoload.php';
+require_once dirname( __FILE__ ) . '/../vendor/antecedent/patchwork/Patchwork.php';
 require_once dirname( __FILE__ ) . '/unit/TinyV2_TestCase.php';
-require_once dirname( __FILE__ ) . '/helpers/wordpress-cli.php';
-require_once dirname( __FILE__ ) . '/../src/config/class-tiny-config.php';
-require_once dirname( __FILE__ ) . '/../src/compatibility/wpml/class-tiny-wpml.php';
-require_once dirname( __FILE__ ) . '/../src/compatibility/as3cf/class-tiny-as3cf.php';
-require_once dirname( __FILE__ ) . '/../src/compatibility/woocommerce/class-tiny-woocommerce.php';
 
 function plugin_autoloader( $class ) {
 	$file = dirname( __FILE__ ) . '/../src/class-' .
