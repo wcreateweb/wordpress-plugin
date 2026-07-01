@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<phpunit colors="true">
+<phpunit colors="true" bootstrap="./test/bootstrap.php">
+    <php>
+        <env name="XDEBUG_MODE" value="off" />
+    </php>
     <testsuites>
         <testsuite name="Unit Tests">
             <directory>./test/unit</directory>
+            <exclude>./test/unit/TinyCompressTest.php</exclude>
+        </testsuite>
+        <testsuite name="Unit Tests V2">
+            <file>./test/unit/TinyCompressTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>
