@@ -3,12 +3,16 @@ use PHPUnit\Framework\TestCase;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Brain\Monkey;
 
-class TinyTestCaseV2 extends TestCase
+class TinyV2_TestCase extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    protected function tearDown(): void
-    {
+    protected function setUp(): void {
+        parent::setUp();
+        Monkey\setUp();
+    }
+
+    protected function tearDown(): void {
         Monkey\tearDown();
         parent::tearDown();
     }
