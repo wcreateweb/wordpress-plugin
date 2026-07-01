@@ -1,8 +1,5 @@
 <?php
-
-require_once dirname(__FILE__) . '/TinyTestCase.php';
-
-class Tiny_Compress_Common extends Tiny_TestCase
+class Tiny_Compress_Common extends TinyV2_TestCase
 {
 	public function test_estimate_cost_free()
 	{

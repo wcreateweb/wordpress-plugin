@@ -1,7 +1,7 @@
 <?php
 
 require_once dirname( __FILE__ ) . '/../vendor/autoload.php';
-require_once dirname( __FILE__ ) . '/unit/Tiny_TestCase_V2.php';
+require_once dirname( __FILE__ ) . '/unit/TinyV2_TestCase.php';
 require_once dirname( __FILE__ ) . '/helpers/wordpress-cli.php';
 require_once dirname( __FILE__ ) . '/../src/config/class-tiny-config.php';
 require_once dirname( __FILE__ ) . '/../src/compatibility/wpml/class-tiny-wpml.php';
