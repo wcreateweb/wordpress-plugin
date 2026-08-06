@@ -119,6 +119,16 @@ class Tiny_Plugin extends Tiny_WP_Base {
 			$this->get_method( 'mark_image_as_compressed' )
 		);
 
+		add_action(
+			'wp_ajax_tiny_scan_page',
+			$this->get_method( 'scan_page' )
+		);
+
+		add_action(
+			'wp_ajax_tiny_optimize_page_image',
+			$this->get_method( 'optimize_page_image' )
+		);
+
 		/*
 		When touching any functionality linked to image compressions when
 			uploading images make sure it also works with XML-RPC. See README. */
@@ -686,6 +696,211 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		$this->render_compress_details( $tiny_image );
 
 		exit();
+	}
+
+	/**
+	 * Scans the references the admin bar panel collected from the current page.
+	 *
+	 * Runs only when the panel is opened. Nothing here is cached: the report mixes
+	 * settings-dependent size names with live compression state and byte totals, each going
+	 * stale on a different trigger, and it would be wrong immediately after the user's own
+	 * Optimize click.
+	 *
+	 * @since 3.8.0
+	 */
+	public function scan_page() {
+		check_ajax_referer( 'tiny-compress', '_nonce' );
+
+		if ( ! current_user_can( 'upload_files' ) ) {
+			exit();
+		}
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$raw        = isset( $_POST['references'] ) ? wp_unslash( $_POST['references'] ) : '';
+		$references = json_decode( $raw, true );
+
+		if ( ! is_array( $references ) ) {
+			$references = array();
+		}
+
+		$page_scan = new Tiny_Page_Scan( $this->settings );
+		$report    = $page_scan->scan( self::sanitize_references( $references ) );
+
+		$this->render_page_scan( $page_scan, $report );
+
+		exit();
+	}
+
+	/**
+	 * Compresses the sizes one page references for a single attachment.
+	 *
+	 * Has its own action rather than reusing tiny_compress_image_from_library, which
+	 * renders the Media Library view and is the handler that surface depends on. A separate
+	 * handler lets the panel's path be wrong without the Media Library's being wrong.
+	 *
+	 * @since 3.8.0
+	 */
+	public function optimize_page_image() {
+		$response = $this->validate_ajax_attachment_request();
+		if ( isset( $response['error'] ) ) {
+			echo esc_html( $response['error'] );
+			exit();
+		}
+
+		list($id, $metadata) = $response['data'];
+
+		// Nonce verified in validate_ajax_attachment_request().
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$raw = isset( $_POST['sizes'] ) ? wp_unslash( $_POST['sizes'] ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		$sizes = self::sanitize_size_names( json_decode( $raw, true ) );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$raw_summary = isset( $_POST['summary'] ) ? wp_unslash( $_POST['summary'] ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		Tiny_Logger::debug(
+			'optimize from page scan',
+			array(
+				'image_id' => $id,
+				'sizes'    => $sizes,
+			)
+		);
+
+		$page_scan = new Tiny_Page_Scan( $this->settings );
+
+		/*
+		The header counts the whole page, but this request changes one row, and rescanning
+			every reference to recount them would cost a full scan per optimized row. So the
+			panel hands back the totals it was last given and the server adjusts them by the
+			difference it can see for itself, between this row before and after. Only the
+			baseline comes from the client, and only the panel's own numbers are affected by
+			a wrong one -- the next scan re-derives all of them from scratch. */
+		$before = $page_scan->build_row( $id, $sizes );
+
+		$tiny_image = new Tiny_Image( $this->settings, $id, $metadata );
+		$tiny_image->compress( $sizes );
+
+		// The dimensions of the original image can change, so the metadata is written back.
+		wp_update_attachment_metadata( $id, $tiny_image->get_wp_metadata() );
+
+		$row = $page_scan->build_row( $id, $sizes );
+
+		$summary = Tiny_Page_Scan::apply_row_delta(
+			self::sanitize_summary( json_decode( $raw_summary, true ) ),
+			$before,
+			$row
+		);
+
+		$account_notice = $page_scan->account_notice();
+
+		include __DIR__ . '/views/page-scan-header.php';
+		include __DIR__ . '/views/page-scan-row.php';
+
+		exit();
+	}
+
+	/**
+	 * Renders the whole panel: the account notice, the header and the rows.
+	 *
+	 * @param Tiny_Page_Scan $page_scan
+	 * @param array          $report
+	 */
+	private function render_page_scan( $page_scan, $report ) {
+		$summary        = $page_scan->summarize( $report );
+		$account_notice = $page_scan->account_notice();
+
+		include __DIR__ . '/views/page-scan.php';
+	}
+
+	/**
+	 * Reduces posted references to the shape the scan expects.
+	 *
+	 * These arrive from a rendered front-end page and are user input. Only the structure is
+	 * trusted here; whether a URL belongs to an attachment is settled by the resolver, which
+	 * proves every match against that attachment's own metadata.
+	 *
+	 * @param array $references
+	 * @return array
+	 */
+	private static function sanitize_references( $references ) {
+		$clean = array();
+
+		foreach ( $references as $reference ) {
+			if ( ! is_array( $reference ) || ! isset( $reference['urls'] )
+				|| ! is_array( $reference['urls'] ) ) {
+				continue;
+			}
+
+			$urls = array();
+			foreach ( $reference['urls'] as $url ) {
+				if ( is_string( $url ) && '' !== $url ) {
+					$urls[] = $url;
+				}
+			}
+
+			if ( empty( $urls ) ) {
+				continue;
+			}
+
+			$clean[] = array(
+				'src'  => isset( $reference['src'] ) && is_string( $reference['src'] )
+					? $reference['src']
+					: $urls[0],
+				'urls' => $urls,
+			);
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * Reduces posted size names to strings, restoring ORIGINAL to integer 0.
+	 *
+	 * JSON has no way to keep the distinction, and Tiny_Image compares size names strictly.
+	 *
+	 * @param mixed $sizes
+	 * @return array
+	 */
+	private static function sanitize_size_names( $sizes ) {
+		if ( ! is_array( $sizes ) ) {
+			return array();
+		}
+
+		$clean = array();
+
+		foreach ( $sizes as $size ) {
+			if ( is_array( $size ) || is_object( $size ) ) {
+				continue;
+			}
+			if ( (string) Tiny_Image::ORIGINAL === (string) $size ) {
+				$clean[] = Tiny_Image::ORIGINAL;
+			} else {
+				$clean[] = sanitize_text_field( (string) $size );
+			}
+		}
+
+		return array_values( array_unique( $clean ) );
+	}
+
+	/**
+	 * Reduces a posted header summary to non-negative integers.
+	 *
+	 * @param mixed $summary
+	 * @return array
+	 */
+	private static function sanitize_summary( $summary ) {
+		$clean = array();
+
+		foreach ( Tiny_Page_Scan::summary_keys() as $key ) {
+			$value         = isset( $summary[ $key ] ) ? intval( $summary[ $key ] ) : 0;
+			$clean[ $key ] = $value > 0 ? $value : 0;
+		}
+
+		return $clean;
 	}
 
 	public function media_library_bulk_action() {

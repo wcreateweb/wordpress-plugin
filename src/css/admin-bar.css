@@ -1,0 +1,267 @@
+/*
+ * Tiny Compress Images - the front-end admin bar Images panel.
+ *
+ * Every rule is scoped under #wpadminbar: this stylesheet loads on the front end of the
+ * site, and nothing in it may reach the theme.
+ */
+
+#wpadminbar #wp-admin-bar-tiny-images .ab-sub-wrapper {
+	width: 420px;
+}
+
+#wpadminbar #wp-admin-bar-tiny-images-panel > .ab-item,
+#wpadminbar #wp-admin-bar-tiny-images-panel > .ab-empty-item {
+	height: auto;
+	margin: 0;
+	padding: 0;
+	line-height: 1.5;
+	white-space: normal;
+	color: #c3c4c7;
+}
+
+#wpadminbar #wp-admin-bar-tiny-images-panel > .ab-item:hover {
+	background: transparent;
+	color: #c3c4c7;
+}
+
+#wpadminbar .tiny-images-panel {
+	max-height: 70vh;
+	overflow-x: hidden;
+	overflow-y: auto;
+	font-size: 12px;
+}
+
+#wpadminbar .tiny-images-panel button {
+	cursor: pointer;
+	font: inherit;
+}
+
+#wpadminbar .tiny-images-panel button[disabled] {
+	cursor: default;
+	opacity: 0.6;
+}
+
+#wpadminbar .tiny-images-message {
+	margin: 0;
+	padding: 14px 12px;
+	color: #a7aaad;
+}
+
+/* --------------------------------------------------------------------------- header */
+
+#wpadminbar .tiny-images-header {
+	padding: 12px;
+	border-bottom: 1px solid #3c434a;
+}
+
+#wpadminbar .tiny-images-account {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	margin: 0 0 10px;
+	padding: 7px 9px;
+	border-radius: 3px;
+	background: #4a2c00;
+	color: #f6e3c4;
+	line-height: 1.4;
+}
+
+#wpadminbar .tiny-images-account-icon {
+	flex: 0 0 auto;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	background: #d9a23a;
+	color: #2c1a00;
+	font-weight: 700;
+	line-height: 15px;
+	text-align: center;
+}
+
+#wpadminbar .tiny-images-count {
+	margin: 0;
+	color: #f0f0f1;
+	font-size: 13px;
+}
+
+#wpadminbar .tiny-images-count strong {
+	font-size: 18px;
+}
+
+#wpadminbar .tiny-images-sub {
+	margin: 2px 0 0;
+	color: #a7aaad;
+}
+
+#wpadminbar .tiny-images-button {
+	display: block;
+	width: 100%;
+	margin-top: 10px;
+	padding: 7px;
+	border: 0;
+	border-radius: 3px;
+	background: #2271b1;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+#wpadminbar .tiny-images-button:hover {
+	background: #135e96;
+}
+
+#wpadminbar .tiny-images-button--cancel {
+	background: #50575e;
+}
+
+#wpadminbar .tiny-images-button--cancel:hover {
+	background: #3c434a;
+}
+
+/* ----------------------------------------------------------------------------- rows */
+
+#wpadminbar .tiny-images-rows {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+#wpadminbar .tiny-images-row {
+	display: flex;
+	gap: 10px;
+	padding: 10px 12px;
+	border-bottom: 1px solid #32373c;
+}
+
+#wpadminbar .tiny-images-row.is-working {
+	opacity: 0.7;
+}
+
+#wpadminbar .tiny-images-thumb {
+	flex: 0 0 48px;
+}
+
+#wpadminbar .tiny-images-thumb img,
+#wpadminbar .tiny-images-thumb-blank {
+	display: block;
+	width: 48px;
+	height: 48px;
+	border-radius: 3px;
+	object-fit: cover;
+}
+
+#wpadminbar .tiny-images-thumb-blank {
+	box-sizing: border-box;
+	border: 1px dashed #50575e;
+	background: #32373c;
+}
+
+#wpadminbar .tiny-images-body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+#wpadminbar .tiny-images-title {
+	display: block;
+	overflow: hidden;
+	color: #f0f0f1;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#wpadminbar .tiny-images-line {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 2px;
+}
+
+#wpadminbar .tiny-images-chip {
+	flex: 0 0 auto;
+	padding: 1px 7px;
+	border-radius: 9px;
+	background: #3c434a;
+	color: #dcdcde;
+	font-size: 10px;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+#wpadminbar .tiny-images-chip--optimizable {
+	background: #8a5f00;
+	color: #fff;
+}
+
+#wpadminbar .tiny-images-chip--optimized {
+	background: #00733f;
+	color: #fff;
+}
+
+#wpadminbar .tiny-images-meta {
+	overflow: hidden;
+	color: #a7aaad;
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#wpadminbar .tiny-images-action {
+	flex: 0 0 auto;
+	margin-left: auto;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #72aee6;
+	font-size: 11px;
+	text-decoration: underline;
+}
+
+#wpadminbar .tiny-images-action:hover {
+	color: #9ec2e6;
+}
+
+#wpadminbar .tiny-images-reason {
+	display: block;
+	margin-top: 3px;
+	color: #f0b849;
+	font-size: 11px;
+}
+
+#wpadminbar .tiny-images-sizes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 5px;
+}
+
+#wpadminbar .tiny-images-size {
+	padding: 0 4px;
+	border: 1px solid #3c434a;
+	border-radius: 2px;
+	color: #a7aaad;
+	font-size: 10px;
+}
+
+#wpadminbar .tiny-images-size.is-done {
+	border-color: #2c5e3f;
+	color: #68de7c;
+}
+
+#wpadminbar .tiny-images-disclosure {
+	display: block;
+	margin-top: 5px;
+	color: #a7aaad;
+	font-size: 10px;
+	font-style: italic;
+	line-height: 1.4;
+	white-space: normal;
+}
+
+#wpadminbar .tiny-images-help {
+	margin: 0;
+	padding: 10px 12px;
+	color: #787c82;
+	font-size: 11px;
+	font-style: italic;
+}

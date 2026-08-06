@@ -218,7 +218,19 @@ class Tiny_Image {
 		return get_post_mime_type( $this->id );
 	}
 
-	public function compress() {
+	/**
+	 * Compresses the image sizes that still need processing.
+	 *
+	 * @since 3.8.0 Accepts an optional size subset.
+	 *
+	 * @param array|null $sizes Optional. Size names to compress in addition to the ones
+	 *                          enabled in the settings. The effective set is the union of
+	 *                          both, so a submitted size is compressed even when the
+	 *                          settings exclude it. Passing null — the default — reaches
+	 *                          the identical call as before and leaves behaviour unchanged.
+	 * @return array|null Success and failure counts, or null when there is nothing to do.
+	 */
+	public function compress( $sizes = null ) {
 		Tiny_Logger::debug(
 			'compress',
 			array(
@@ -247,6 +259,16 @@ class Tiny_Image {
 		$failed  = 0;
 
 		$active_tinify_sizes = $this->settings->get_active_tinify_sizes();
+
+		if ( ! is_null( $sizes ) ) {
+			/*
+			Merge on values, not keys: get_active_tinify_sizes() returns a list, and
+				ORIGINAL must stay integer 0 because it is compared strictly elsewhere.
+				array_unique() compares as strings but returns the original values. */
+			$active_tinify_sizes = array_unique(
+				array_merge( $active_tinify_sizes, $sizes )
+			);
+		}
 
 		if ( $this->settings->get_conversion_enabled() ) {
 			$uncompressed_sizes = $this->filter_image_sizes( 'uncompressed', $active_tinify_sizes );

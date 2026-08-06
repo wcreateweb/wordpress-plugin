@@ -22,6 +22,8 @@ require dirname( __FILE__ ) . '/src/class-tiny-bulk-optimization.php';
 require dirname( __FILE__ ) . '/src/class-tiny-image-size.php';
 require dirname( __FILE__ ) . '/src/class-tiny-image.php';
 require dirname( __FILE__ ) . '/src/class-tiny-settings.php';
+require dirname( __FILE__ ) . '/src/class-tiny-page-scan.php';
+require dirname( __FILE__ ) . '/src/class-tiny-admin-bar.php';
 require dirname( __FILE__ ) . '/src/class-tiny-plugin.php';
 require dirname( __FILE__ ) . '/src/class-tiny-notices.php';
 require dirname( __FILE__ ) . '/src/class-tiny-cli.php';
@@ -40,7 +42,8 @@ if ( Tiny_PHP::client_supported() ) {
 
 add_action( 'admin_init', array( 'Tiny_Migrate', 'run' ) );
 
-$tiny_plugin = new Tiny_Plugin();
+$tiny_plugin    = new Tiny_Plugin();
+$tiny_admin_bar = new Tiny_Admin_Bar();
 
 register_uninstall_hook(
 	__FILE__,
