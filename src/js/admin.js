@@ -313,7 +313,6 @@
     });
   }
 
-  console.log('adminpage:', adminpage);
   switch (adminpage) {
   case 'upload-php':
     eventOn('click', 'button.tiny-compress', compressImage);
