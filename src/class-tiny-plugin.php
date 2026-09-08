@@ -56,6 +56,24 @@ class Tiny_Plugin extends Tiny_WP_Base {
 			$this->get_static_method( 'jpeg_quality' )
 		);
 
+		/*
+		Settings that change what counts as optimized. Saving one makes what the
+			queue recorded about the library out of date. */
+		$optimization_settings = array(
+			'sizes',
+			'resize_original',
+			'preserve_data',
+			'convert_format',
+		);
+
+		foreach ( $optimization_settings as $setting ) {
+			$option = self::get_prefixed_name( $setting );
+
+			/* A setting saved for the first time is added, not updated. */
+			add_action( 'add_option_' . $option, array( $this->bulk_queue, 'invalidate' ) );
+			add_action( 'update_option_' . $option, array( $this->bulk_queue, 'invalidate' ) );
+		}
+
 		add_filter(
 			'wp_editor_set_quality',
 			$this->get_static_method( 'jpeg_quality' )
@@ -119,6 +137,16 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		add_action(
 			'wp_ajax_tiny_bulk_queue_status',
 			$this->get_method( 'ajax_bulk_queue_status' )
+		);
+
+		add_action(
+			'wp_ajax_tiny_bulk_queue_pause',
+			$this->get_method( 'ajax_bulk_queue_pause' )
+		);
+
+		add_action(
+			'wp_ajax_tiny_bulk_queue_resume',
+			$this->get_method( 'ajax_bulk_queue_resume' )
 		);
 
 		add_action(
@@ -353,12 +381,22 @@ class Tiny_Plugin extends Tiny_WP_Base {
 				'L10nError'              => __( 'Error', 'tiny-compress-images' ),
 				'L10nLatestError'        => __( 'Latest error', 'tiny-compress-images' ),
 				'L10nInternalError'      => __( 'Internal error', 'tiny-compress-images' ),
-				'L10nQueueUnreachable'   => __(
-					'Could not reach this site to start background processing',
-					'tiny-compress-images'
-				),
 				'L10nOutOf'              => __( 'out of', 'tiny-compress-images' ),
 				'L10nWaiting'            => __( 'Waiting', 'tiny-compress-images' ),
+				/*
+				The bulk queue page takes its wording from
+					Tiny_Plugin::bulk_queue_display(). What is left here is only what
+					the script writes into the rows of the list. */
+				'L10nQueueQueued'        => __( 'Queued', 'tiny-compress-images' ),
+				/* translators: %s: number of image sizes */
+				'L10nQueueSizes'         => __( '%s sizes', 'tiny-compress-images' ),
+				/* translators: %s: percentage saved on an image */
+				'L10nQueueSaved'         => __( '(%s% saved)', 'tiny-compress-images' ),
+				/* translators: %s: percentage of the sizes of one image that are done */
+				'L10nQueueSizeProgress'  => __(
+					'Optimizing sizes (%s%)',
+					'tiny-compress-images'
+				),
 			)
 		);
 
@@ -391,9 +429,11 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		}
 
 		if ( 'media_page_tiny-bulk-optimization-queue' == $hook ) {
+			wp_enqueue_style( 'dashicons' );
+
 			wp_enqueue_style(
-				self::NAME . '_tiny_bulk_optimization',
-				plugins_url( '/css/bulk-optimization.css', __FILE__ ),
+				self::NAME . '_tiny_bulk_optimization_queue',
+				plugins_url( '/css/bulk-optimization-queue.css', __FILE__ ),
 				array(),
 				self::version()
 			);
@@ -734,6 +774,183 @@ class Tiny_Plugin extends Tiny_WP_Base {
 	 * run is a reset and a dispatch no matter how large the library is. Passing
 	 * ids optimizes just those attachments instead of everything.
 	 */
+	/**
+	 * Attach to the queue's progress everything the page shows about it.
+	 *
+	 * @param array $progress Progress as reported by the queue.
+	 * @return array
+	 */
+	private static function with_display( array $progress, $library_optimized = null ) {
+		$progress['display'] = self::bulk_queue_display( $progress, $library_optimized );
+
+		return $progress;
+	}
+
+	/**
+	 * What the bulk optimization page says about a run, worked out once.
+	 *
+	 * The page is drawn twice: by PHP when it loads, and by the script on every
+	 * poll after that. Deciding here what each state looks like keeps the two
+	 * from drifting apart, and lets the first paint already be right instead of
+	 * showing a default that the script corrects a moment later.
+	 *
+	 * @param array     $progress          Progress as reported by the queue.
+	 * @param bool|null $library_optimized Whether a scan found nothing left to
+	 *                                     optimize, or null when none was made.
+	 * @return array
+	 */
+	private static function bulk_queue_display( array $progress, $library_optimized = null ) {
+		$counts    = $progress['counts'];
+		$status    = $progress['status'];
+		$total     = intval( $progress['total'] );
+		$processed = intval( $progress['processed'] );
+		$failed    = intval( $counts[ Tiny_Bulk_Queue::STATUS_FAILED ] );
+
+		/*
+		Optimized means there is nothing left to do for that image: it was
+			compressed, or it was looked at and needed nothing. Everything else,
+			a failure included, still counts as unoptimized. */
+		$optimized = intval( $counts[ Tiny_Bulk_Queue::STATUS_DONE ] )
+			+ intval( $counts[ Tiny_Bulk_Queue::STATUS_SKIPPED ] );
+
+		$unoptimized = max( 0, $total - $optimized );
+		$remaining   = max( 0, $total - $processed );
+		$library     = intval( $progress['library'] );
+		$working     = 'running' === $status || 'paused' === $status;
+
+		/*
+		A finished run is one way to know there is nothing left to do. Measuring
+			the library is the other, and the only one that still holds when the
+			images were compressed on upload, or by a run this page never saw, or
+			when a settings change cleared what the last run recorded. A run that
+			is still going is finished by neither. */
+		$complete = ! $working && (
+			is_null( $library_optimized )
+				? ( 'done' === $status && 0 === $unoptimized )
+				: (bool) $library_optimized
+		);
+
+		$display = array(
+			'empty'      => 0 === $library,
+			'complete'   => $complete,
+			'running'    => 'running' === $status,
+			'paused'     => 'paused' === $status,
+			'list'       => ! empty( $progress['current'] ) || ! empty( $progress['queued'] ),
+			'spinner'    => false,
+			'icon'       => '',
+			'label'      => '',
+			'subtitle'   => '',
+			'percentage' => $total > 0 ? intval( round( $processed / $total * 100 ) ) : 0,
+			'left'       => '',
+			'right'      => '',
+			'details'    => array(
+				'text'  => '',
+				'name'  => '',
+				'error' => false,
+			),
+		);
+
+		/*
+		Stopping is two separate things now. Pausing leaves the queue standing,
+			so the run can be picked up again; cancelling is what throws it away,
+			and is only offered once the queue has stopped moving. */
+		$display['actions'] = array(
+			'start'  => ! $display['running'] && ! $display['paused']
+				&& ! $display['complete'] && ! $display['empty'],
+			'pause'  => $display['running'],
+			'resume' => $display['paused'],
+			'cancel' => $display['paused'],
+		);
+
+		if ( $display['empty'] ) {
+			/* Nothing uploaded yet: no run to report on, only what to do next. */
+			$display['label']    = __( 'Your library is empty', 'tiny-compress-images' );
+			$display['subtitle'] = __(
+				'Upload images to your library to get started.',
+				'tiny-compress-images'
+			);
+
+			return $display;
+		}
+
+		if ( $display['complete'] ) {
+			$display['icon']     = 'dashicons-yes-alt';
+			$display['label']    = __( 'Library optimized!', 'tiny-compress-images' );
+			$display['subtitle'] = __(
+				'Every image in your library has been optimized.',
+				'tiny-compress-images'
+			);
+
+			/*
+			A finished library is a result, not progress. What the last run
+				happened to touch is beside the point: every image is optimized,
+				so that is what the bar reports. */
+			$display['percentage'] = 100;
+
+			$display['left'] = sprintf(
+				/* translators: %s: number of images with nothing left to optimize */
+				__( '%s optimized', 'tiny-compress-images' ),
+				number_format_i18n( $library )
+			);
+
+			$display['right'] = sprintf(
+				/* translators: %s: number of images still to be optimized */
+				__( '%s unoptimized', 'tiny-compress-images' ),
+				number_format_i18n( 0 )
+			);
+
+			return self::bulk_queue_details( $display, $progress );
+		}
+
+		$display['left'] = sprintf(
+			/* translators: %s: percentage of the library that is done */
+			__( '%s%% complete', 'tiny-compress-images' ),
+			number_format_i18n( $display['percentage'] )
+		);
+
+		$display['right'] = sprintf(
+			/* translators: %s: number of images left to optimize */
+			_n(
+				'%s image remaining',
+				'%s images remaining',
+				$remaining,
+				'tiny-compress-images'
+			),
+			number_format_i18n( $remaining )
+		);
+
+		return self::bulk_queue_details( $display, $progress );
+	}
+
+	/**
+	 * The line under the progress bar: what is happening, or why nothing is.
+	 *
+	 * @param array $display  Display state built so far.
+	 * @param array $progress Progress as reported by the queue.
+	 * @return array
+	 */
+	private static function bulk_queue_details( array $display, array $progress ) {
+		/* A run that never got going has only its error to explain itself. */
+		if ( ! empty( $progress['error_message'] ) ) {
+			$display['details']['text']  = $progress['error_message'];
+			$display['details']['error'] = true;
+
+			return $display;
+		}
+
+		if ( ! $display['running'] || empty( $progress['current'] ) ) {
+			return $display;
+		}
+
+		$current = $progress['current'][0];
+		$name    = '' !== $current['title'] ? $current['title'] : $current['id'];
+
+		$display['details']['text'] = __( 'Currently optimizing:', 'tiny-compress-images' );
+		$display['details']['name'] = sprintf( '#%1$s %2$s', $current['id'], $name );
+
+		return $display;
+	}
+
 	public function ajax_bulk_queue_start() {
 		if ( ! $this->validate_bulk_queue_request() ) {
 			echo json_encode( array( 'error' => __( 'Not allowed', 'tiny-compress-images' ) ) );
@@ -744,7 +961,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		Only a run that is genuinely under way blocks a new one. Asking the
 			library whether it is "active" would also count a cancel that never
 			reached its handler, which would make the button do nothing. */
-		$progress = $this->bulk_queue->get_progress();
+		$progress = self::with_display( $this->bulk_queue->get_progress() );
 		if ( 'running' === $progress['status'] ) {
 			echo json_encode( $progress );
 			exit();
@@ -761,7 +978,7 @@ class Tiny_Plugin extends Tiny_WP_Base {
 			$ids = array_filter( array_map( 'intval', explode( ',', $requested ) ) );
 		}
 
-		echo json_encode( $this->bulk_queue->start( $ids ) );
+		echo json_encode( self::with_display( $this->bulk_queue->start( $ids ) ) );
 		exit();
 	}
 
@@ -771,7 +988,31 @@ class Tiny_Plugin extends Tiny_WP_Base {
 			exit();
 		}
 
-		echo json_encode( $this->bulk_queue->get_progress() );
+		echo json_encode( self::with_display( $this->bulk_queue->get_progress() ) );
+		exit();
+	}
+
+	public function ajax_bulk_queue_pause() {
+		if ( ! $this->validate_bulk_queue_request() ) {
+			echo json_encode( array( 'error' => __( 'Not allowed', 'tiny-compress-images' ) ) );
+			exit();
+		}
+
+		$this->bulk_queue->pause_run();
+
+		echo json_encode( self::with_display( $this->bulk_queue->get_progress() ) );
+		exit();
+	}
+
+	public function ajax_bulk_queue_resume() {
+		if ( ! $this->validate_bulk_queue_request() ) {
+			echo json_encode( array( 'error' => __( 'Not allowed', 'tiny-compress-images' ) ) );
+			exit();
+		}
+
+		$this->bulk_queue->resume_run();
+
+		echo json_encode( self::with_display( $this->bulk_queue->get_progress() ) );
 		exit();
 	}
 
@@ -781,9 +1022,9 @@ class Tiny_Plugin extends Tiny_WP_Base {
 			exit();
 		}
 
-		$this->bulk_queue->stop();
+		$this->bulk_queue->cancel_run();
 
-		echo json_encode( $this->bulk_queue->get_progress() );
+		echo json_encode( self::with_display( $this->bulk_queue->get_progress() ) );
 		exit();
 	}
 
@@ -932,11 +1173,22 @@ class Tiny_Plugin extends Tiny_WP_Base {
 		/* This makes sure that up to date information is retrieved from the API. */
 		$this->settings->get_compressor()->get_status();
 
-		/*
-		No library scan here. The queue counts come out of postmeta, so this
-			page renders in the same time on a library of ten or ten thousand. */
-		$progress          = $this->bulk_queue->get_progress();
 		$remaining_credits = $this->settings->get_remaining_credits();
+
+		/*
+		A snapshot for the statistics panel. The whole library is measured once,
+			when the page opens; the run itself is followed through the counts in
+			postmeta, which cost the same on a library of ten or ten thousand. */
+		$stats = Tiny_Bulk_Optimization::get_optimization_statistics( $this->settings );
+
+		/*
+		Having measured the library anyway, say whether anything is left to do.
+			The queue only knows about its own runs, and the answer has to hold
+			however the images came to be optimized. */
+		$progress = self::with_display(
+			$this->bulk_queue->get_progress(),
+			0 === intval( $stats['available-unoptimized-sizes'] )
+		);
 
 		include __DIR__ . '/views/bulk-optimization-queue.php';
 	}

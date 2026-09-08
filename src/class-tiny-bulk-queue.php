@@ -28,13 +28,13 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	const META_ATTEMPTS = '_tinywp_attempts';
 	const META_CLAIMED  = '_tinywp_claimed';
 	const META_ERROR    = '_tinywp_error';
+	const META_PROGRESS = '_tinywp_progress';
 
 	const STATUS_PENDING    = 'pending';
 	const STATUS_PROCESSING = 'processing';
 	const STATUS_DONE       = 'done';
 	const STATUS_FAILED     = 'failed';
 	const STATUS_SKIPPED    = 'skipped';
-	const STATUS_CANCELLED  = 'cancelled';
 
 	/* Attachments claimed per round trip to the database. */
 	const BATCH_SIZE = 20;
@@ -54,8 +54,14 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 		stored: they are queried from postmeta. */
 	const RUN_OPTION = 'tinypng_bulk_queue_run';
 
-	/* Number of processed images kept around for display. */
-	const LOG_SIZE = 20;
+	/* Number of images the page shows ahead of the one being optimized. */
+	const QUEUE_PREVIEW = 10;
+
+	/* Row details for images the queue has not reached, kept between polls. */
+	const PREVIEW_CACHE = 'tinypng_bulk_queue_preview';
+
+	/* How long those details are trusted without being worked out again. */
+	const PREVIEW_CACHE_LIFE = 300;
 
 	/*
 	How long a run may show no progress before it is reported as stuck. Longer
@@ -85,9 +91,48 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 */
 	private $started_chain_id;
 
+	/**
+	 * Attachment this process is compressing right now.
+	 *
+	 * @var int|null
+	 */
+	private $processing_id;
+
 	public function __construct( $settings ) {
 		$this->settings = $settings;
 		parent::__construct();
+
+		add_action(
+			'tiny_image_size_compressed',
+			array( $this, 'record_size_progress' ),
+			10,
+			3
+		);
+	}
+
+	/**
+	 * Note how far along the image being compressed is.
+	 *
+	 * An image with many sizes takes a while, and without this the page would
+	 * show the same row as busy for a minute with nothing to say about it.
+	 *
+	 * Other things compress images too, on upload or from the media library, so
+	 * only the image this process claimed is recorded.
+	 *
+	 * @param int $id        Attachment ID.
+	 * @param int $processed Sizes processed so far.
+	 * @param int $total     Sizes this compression will process.
+	 */
+	public function record_size_progress( $id, $processed, $total ) {
+		if ( intval( $id ) !== $this->processing_id || $total < 1 ) {
+			return;
+		}
+
+		update_post_meta(
+			$id,
+			self::META_PROGRESS,
+			intval( round( $processed / $total * 100 ) )
+		);
 	}
 
 	/* ---------------------------------------------------------------------
@@ -185,13 +230,49 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	}
 
 	/**
-	 * Stop the current run and leave the results of what did run in place.
+	 * Forget what the last run concluded.
+	 *
+	 * A status records what was left to do for an image under the settings in
+	 * force when it was written. Turn on another image size, or switch on
+	 * conversion, and that conclusion no longer holds: an image marked done may
+	 * well have work waiting again. Rather than let the page go on reporting a
+	 * finished library, throw the bookkeeping away so the next run looks at
+	 * everything afresh. The compression results themselves are left alone.
+	 *
+	 * A run that is under way is left to finish; it is working from these very
+	 * rows.
 	 */
-	public function stop() {
+	public function invalidate() {
+		if ( $this->is_active() ) {
+			return;
+		}
+
+		$this->clear_queue_meta();
+		delete_site_option( self::RUN_OPTION );
+	}
+
+	/**
+	 * Stop working through the queue, leaving it as it is.
+	 */
+	public function pause_run() {
+		$this->pause();
+	}
+
+	/**
+	 * Pick the run back up where it left off.
+	 */
+	public function resume_run() {
+		$this->resume();
+	}
+
+	/**
+	 * Throw away what is left of the queue, keeping what it already did.
+	 */
+	public function cancel_run() {
 		if ( $this->is_active() ) {
 			$this->cancel();
 		} else {
-			$this->cancelled();
+			$this->delete_all();
 		}
 	}
 
@@ -204,29 +285,58 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 		$run    = self::get_run();
 		$counts = $this->status_counts();
 
-		$queued = array_sum( $counts );
-		$total  = $queued;
+		/* Images this run has an answer for, against what the library holds. */
+		$recorded = array_sum( $counts );
+		$library  = $this->image_attachment_count();
+
+		$total = $recorded;
 
 		if ( 'all' === $run['mode'] ) {
 			/*
 			Everything that has not been given a status yet is still waiting,
 				so the library total is the denominator. */
-			$total = max( $queued, $this->image_attachment_count() );
+			$total = max( $recorded, $library );
 		}
 
-		$run['counts']    = $counts;
-		$run['total']     = $total;
+		$run['counts'] = $counts;
+		$run['total']  = $total;
+		/* Images in the library, whatever any run has made of them. */
+		$run['library'] = $library;
+		/*
+		Images the run actually got to. Cancelling marks whatever was still
+			waiting as cancelled, and those were never looked at: counting them
+			here would fill the bar to the end and report nothing left to do,
+			which is the opposite of what stopping half way means. */
 		$run['processed'] = $counts[ self::STATUS_DONE ]
 			+ $counts[ self::STATUS_FAILED ]
-			+ $counts[ self::STATUS_SKIPPED ]
-			+ $counts[ self::STATUS_CANCELLED ];
+			+ $counts[ self::STATUS_SKIPPED ];
 		$run['optimized'] = $counts[ self::STATUS_DONE ];
 		$run['failed']    = $counts[ self::STATUS_FAILED ];
 		$run['skipped']   = $counts[ self::STATUS_SKIPPED ];
 
 		$run['is_processing'] = $this->is_processing();
-		$run['is_queued']     = ! $this->is_queue_empty();
-		$run['is_active']     = $this->is_active();
+		$run['is_queued']     = ! $this->is_queue_empty( $counts, $library );
+
+		/*
+		is_active() would put the same question to the database again, by way of
+			is_queued(). It is the answer just worked out, together with the
+			flags the library keeps in options. */
+		$run['is_active'] = $run['is_queued']
+			|| $run['is_processing']
+			|| $this->is_paused()
+			|| $this->is_cancelled();
+
+		$rows           = $this->list_rows();
+		$run['current'] = $rows['current'];
+		$run['queued']  = $rows['queued'];
+
+		/*
+		Pausing is the library's own flag rather than something written into the
+			run, so that a paused run still reads as running everywhere that
+			decides whether there is work left to claim. */
+		if ( 'running' === $run['status'] && $this->is_paused() ) {
+			$run['status'] = 'paused';
+		}
 
 		/*
 		A run that is neither queued nor holding the lock, and that has not
@@ -240,15 +350,31 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			}
 		}
 
+		/*
+		Finishing is a fact about the run, not about the library. A run clears
+			the statuses it works from when it starts, so an image uploaded
+			after one finished carries none: it has never been looked at. Rather
+			than let a stale 'done' claim the library is processed, report the
+			run as over and the work as waiting to be started again. */
+		if ( 'done' === $run['status'] && $library > $recorded ) {
+			$run['status'] = 'idle';
+			$run['total']  = max( $recorded, $library );
+		}
+
 		return $run;
 	}
 
 	/**
 	 * Replaces the library's check against its batch rows in the options table.
 	 *
+	 * Both counts are queries, and a caller that has just made them can hand
+	 * them over rather than have them made again.
+	 *
+	 * @param array<string,int>|null $counts  Attachments per status.
+	 * @param int|null               $library Images the library holds.
 	 * @return bool
 	 */
-	protected function is_queue_empty() {
+	protected function is_queue_empty( $counts = null, $library = null ) {
 		$run = self::get_run();
 
 		/* A run that was cancelled or finished leaves nothing claimable. */
@@ -256,7 +382,9 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			return true;
 		}
 
-		$counts = $this->status_counts();
+		if ( is_null( $counts ) ) {
+			$counts = $this->status_counts();
+		}
 
 		if ( $counts[ self::STATUS_PENDING ] > 0 || $counts[ self::STATUS_PROCESSING ] > 0 ) {
 			return false;
@@ -266,7 +394,11 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			/*
 			Attachments without a status row have not been looked at yet.
 				Comparing counts avoids the NOT EXISTS scan on every poll. */
-			return $this->image_attachment_count() <= array_sum( $counts );
+			if ( is_null( $library ) ) {
+				$library = $this->image_attachment_count();
+			}
+
+			return $library <= array_sum( $counts );
 		}
 
 		return true;
@@ -340,6 +472,18 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 * @param int $limit Maximum number of attachments to mark.
 	 */
 	protected function mark_next_pending( $limit ) {
+		foreach ( $this->unmarked_attachments( $limit ) as $id ) {
+			add_post_meta( $id, self::META_STATUS, self::STATUS_PENDING, true );
+		}
+	}
+
+	/**
+	 * Attachments the run has not looked at yet, newest first.
+	 *
+	 * @param int $limit Maximum number of attachments to return.
+	 * @return int[]
+	 */
+	protected function unmarked_attachments( $limit ) {
 		global $wpdb;
 
 		$mimes        = self::mime_types();
@@ -358,11 +502,153 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 		$args = array_merge( $mimes, array( self::META_STATUS, $limit ) );
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Only the generated list of %s placeholders is interpolated.
-		$ids = $wpdb->get_col( $wpdb->prepare( $query, $args ) );
+		return array_map( 'intval', $wpdb->get_col( $wpdb->prepare( $query, $args ) ) );
+	}
+
+	/**
+	 * The queue: the image being optimized and the ones lined up behind it.
+	 *
+	 * Only what is still to come. An image drops off the list once the queue is
+	 * done with it, which is the whole of what the list means.
+	 *
+	 * A process claims a whole batch at once and then works through it one
+	 * image at a time, so a claim is not the same as being under way. Only the
+	 * images that have reported progress are actually being optimized; the rest
+	 * of the batch is still waiting, along with anything else marked pending.
+	 *
+	 * Nothing else goes in. With no run there is no queue, and images the queue
+	 * has not taken up are not waiting for anything.
+	 *
+	 * @return array{current: array[], queued: array[]}
+	 */
+	protected function list_rows() {
+		$started = array();
+		$claimed = array();
+
+		foreach ( $this->ids_with_status( self::STATUS_PROCESSING, self::BATCH_SIZE ) as $id ) {
+			if ( metadata_exists( 'post', $id, self::META_PROGRESS ) ) {
+				$started[] = $id;
+			} else {
+				$claimed[] = $id;
+			}
+		}
+
+		$queued = array_slice(
+			array_merge(
+				$claimed,
+				$this->ids_with_status( self::STATUS_PENDING, self::QUEUE_PREVIEW )
+			),
+			0,
+			self::QUEUE_PREVIEW
+		);
+
+		$details = $this->describe_all( array_merge( $started, $queued ) );
+
+		$rows = array(
+			'current' => array(),
+			'queued'  => array(),
+		);
+
+		foreach ( $started as $id ) {
+			$row               = $details[ $id ];
+			$row['status']     = self::STATUS_PROCESSING;
+			$row['progress']   = intval( get_post_meta( $id, self::META_PROGRESS, true ) );
+			$rows['current'][] = $row;
+		}
+
+		foreach ( $queued as $id ) {
+			$row              = $details[ $id ];
+			$row['status']    = self::STATUS_PENDING;
+			$rows['queued'][] = $row;
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * Describe images for the list, reusing what was worked out last time.
+	 *
+	 * Describing an image reads its metadata and then asks the filesystem for
+	 * the size of every file behind it, which is far more than a poll every
+	 * second should be doing for rows that have not moved.
+	 *
+	 * A description is only good for the compression metadata it was read from,
+	 * so each one is kept under a stamp of that metadata. Optimizing an image
+	 * changes the stamp and the row is worked out again; nothing has to
+	 * remember to clear it, and a worker finishing an image cannot race a poll
+	 * writing the cache back.
+	 *
+	 * @param int[] $ids Attachments to describe.
+	 * @return array<int,array> Description per attachment ID.
+	 */
+	private function describe_all( array $ids ) {
+		if ( empty( $ids ) ) {
+			return array();
+		}
+
+		$cached = get_transient( self::PREVIEW_CACHE );
+
+		if ( ! is_array( $cached ) ) {
+			$cached = array();
+		}
+
+		/* One query for the metadata the stamps, and the rows, are read from. */
+		update_meta_cache( 'post', $ids );
+
+		$details = array();
+		$fresh   = array();
+		$worked  = false;
 
 		foreach ( $ids as $id ) {
-			add_post_meta( intval( $id ), self::META_STATUS, self::STATUS_PENDING, true );
+			$stamp = md5(
+				maybe_serialize( get_post_meta( $id, Tiny_Config::META_KEY, true ) )
+			);
+
+			if ( isset( $cached[ $id ]['stamp'] ) && $cached[ $id ]['stamp'] === $stamp ) {
+				$fresh[ $id ] = $cached[ $id ];
+			} else {
+				$fresh[ $id ] = array(
+					'stamp' => $stamp,
+					'row'   => $this->describe_in_full( $id ),
+				);
+
+				$worked = true;
+			}
+
+			$details[ $id ] = $fresh[ $id ]['row'];
 		}
+
+		/* Only what the page shows is kept, so the entry cannot grow. */
+		if ( $worked || count( $fresh ) !== count( $cached ) ) {
+			set_transient( self::PREVIEW_CACHE, $fresh, self::PREVIEW_CACHE_LIFE );
+		}
+
+		return $details;
+	}
+
+	/**
+	 * Attachments sitting in one status, newest first.
+	 *
+	 * @param string $status One of the STATUS_ constants.
+	 * @param int    $limit  Maximum number of attachments to return.
+	 * @return int[]
+	 */
+	protected function ids_with_status( $status, $limit ) {
+		global $wpdb;
+
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT post_id FROM $wpdb->postmeta
+				WHERE meta_key = %s AND meta_value = %s
+				ORDER BY post_id DESC
+				LIMIT %d",
+				self::META_STATUS,
+				$status,
+				$limit
+			)
+		);
+
+		return array_map( 'intval', $ids );
 	}
 
 	/**
@@ -399,6 +685,7 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 * @param int $id Attachment ID.
 	 */
 	protected function release( $id ) {
+		delete_post_meta( $id, self::META_PROGRESS );
 		update_post_meta( $id, self::META_STATUS, self::STATUS_PENDING );
 	}
 
@@ -455,6 +742,8 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 */
 	protected function clear_queue_meta() {
 		global $wpdb;
+
+		delete_transient( self::PREVIEW_CACHE );
 
 		$keys         = self::meta_keys();
 		$placeholders = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
@@ -539,7 +828,7 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 
 		if ( $this->is_queue_empty() ) {
 			$this->complete();
-		} elseif ( $worked ) {
+		} elseif ( $worked && ! $this->is_paused() ) {
 			$this->dispatch();
 		}
 
@@ -567,23 +856,12 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 		update_post_meta( $id, self::META_ATTEMPTS, $attempts );
 
 		if ( ! $this->is_supported_attachment( $id ) ) {
-			$this->finish(
-				$id,
-				self::STATUS_SKIPPED,
-				array( 'title' => get_the_title( $id ) )
-			);
+			$this->finish( $id, self::STATUS_SKIPPED );
 			return false;
 		}
 
-		$active_sizes        = $this->settings->get_sizes();
-		$active_tinify_sizes = $this->settings->get_active_tinify_sizes();
-
-		/*
-		Compressing mutates the image, so the size it started at is read from
-			a separate instance, the same way the AJAX handler does it. */
-		$before       = new Tiny_Image( $this->settings, $id );
-		$stats_before = $before->get_statistics( $active_sizes, $active_tinify_sizes );
-		$size_before  = $stats_before['compressed_total_size'];
+		$this->processing_id = $id;
+		update_post_meta( $id, self::META_PROGRESS, 0 );
 
 		$tiny_image = new Tiny_Image( $this->settings, $id );
 
@@ -597,42 +875,20 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 		try {
 			$result = $tiny_image->compress();
 		} catch ( Exception $e ) {
-			$this->fail( $id, $attempts, $tiny_image->get_name(), $e->getMessage() );
+			$this->fail( $id, $attempts, $e->getMessage() );
 			return false;
 		}
 
 		wp_update_attachment_metadata( $id, $tiny_image->get_wp_metadata() );
 
-		$stats     = $tiny_image->get_statistics( $active_sizes, $active_tinify_sizes );
 		$optimized = isset( $result['success'] ) ? intval( $result['success'] ) : 0;
 
 		if ( ! empty( $result['failed'] ) ) {
-			$this->fail( $id, $attempts, $tiny_image->get_name(), $tiny_image->get_latest_error() );
+			$this->fail( $id, $attempts, $tiny_image->get_latest_error() );
 			return false;
 		}
 
-		$this->finish(
-			$id,
-			$optimized > 0 ? self::STATUS_DONE : self::STATUS_SKIPPED,
-			array(
-				'title'            => $tiny_image->get_name(),
-				'sizes_compressed' => $stats['image_sizes_compressed'],
-				'sizes_converted'  => $stats['image_sizes_converted'],
-				'initial_size'     => size_format( $stats['initial_total_size'], 1 ),
-				'optimized_size'   => size_format( $stats['compressed_total_size'], 1 ),
-				'savings'          => $tiny_image->get_savings( $stats ),
-				'thumbnail'        => wp_get_attachment_image(
-					$id,
-					array( '30', '30' ),
-					true,
-					array(
-						'class' => 'pinkynail',
-						'alt'   => '',
-					)
-				),
-				'size_change'      => $stats['compressed_total_size'] - $size_before,
-			)
-		);
+		$this->finish( $id, $optimized > 0 ? self::STATUS_DONE : self::STATUS_SKIPPED );
 
 		return false;
 	}
@@ -642,21 +898,14 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 *
 	 * @param int    $id     Attachment ID.
 	 * @param string $status One of the STATUS_ constants.
-	 * @param array  $entry  Details for the table of recent results.
 	 */
-	protected function finish( $id, $status, array $entry = array() ) {
+	protected function finish( $id, $status ) {
 		update_post_meta( $id, self::META_STATUS, $status );
 		delete_post_meta( $id, self::META_ERROR );
+		delete_post_meta( $id, self::META_PROGRESS );
+		$this->processing_id = null;
 
-		$this->log(
-			array_merge(
-				$entry,
-				array(
-					'id'     => $id,
-					'status' => $status,
-				)
-			)
-		);
+		$this->touch();
 	}
 
 	/**
@@ -667,11 +916,12 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 *
 	 * @param int    $id       Attachment ID.
 	 * @param int    $attempts Attempts made so far, including this one.
-	 * @param string $title    Attachment name, for display.
 	 * @param string $message  Why it failed.
 	 */
-	protected function fail( $id, $attempts, $title, $message ) {
+	protected function fail( $id, $attempts, $message ) {
 		update_post_meta( $id, self::META_ERROR, (string) $message );
+		delete_post_meta( $id, self::META_PROGRESS );
+		$this->processing_id = null;
 
 		if ( $attempts < self::MAX_ATTEMPTS ) {
 			$this->release( $id );
@@ -679,15 +929,7 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 		}
 
 		update_post_meta( $id, self::META_STATUS, self::STATUS_FAILED );
-
-		$this->log(
-			array(
-				'id'      => $id,
-				'title'   => $title,
-				'status'  => self::STATUS_FAILED,
-				'message' => $message,
-			)
-		);
+		$this->touch();
 	}
 
 	/* ---------------------------------------------------------------------
@@ -736,11 +978,18 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			$ids = array_map( 'intval', $ids );
 			$in  = implode( ', ', $ids );
 
-			$update = "UPDATE $wpdb->postmeta SET meta_value = %s
-				WHERE meta_key = %s AND post_id IN ($in)";
+			$keys         = self::meta_keys();
+			$placeholders = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
 
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only a list of integers is interpolated.
-			$wpdb->query( $wpdb->prepare( $update, self::STATUS_CANCELLED, self::META_STATUS ) );
+			/*
+			The rows go rather than change to some cancelled state: an image
+				taken out of the queue is one the queue has not looked at, which
+				is what having no status row means. */
+			$delete = "DELETE FROM $wpdb->postmeta
+				WHERE meta_key IN ($placeholders) AND post_id IN ($in)";
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Only generated %s placeholders and a list of integers are interpolated.
+			$wpdb->query( $wpdb->prepare( $delete, $keys ) );
 
 			foreach ( $ids as $id ) {
 				wp_cache_delete( $id, 'post_meta' );
@@ -825,6 +1074,7 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			self::META_ATTEMPTS,
 			self::META_CLAIMED,
 			self::META_ERROR,
+			self::META_PROGRESS,
 		);
 	}
 
@@ -835,7 +1085,6 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			self::STATUS_DONE,
 			self::STATUS_FAILED,
 			self::STATUS_SKIPPED,
-			self::STATUS_CANCELLED,
 		);
 	}
 
@@ -847,30 +1096,106 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 	 *
 	 * @param array $entry Result of processing one attachment.
 	 */
-	private function log( array $entry ) {
+	/**
+	 * Name, file and thumbnail of an attachment.
+	 *
+	 * @param int $id Attachment ID.
+	 * @return array
+	 */
+	private function describe( $id ) {
+		$file = get_post_meta( $id, '_wp_attached_file', true );
+
+		return array(
+			'id'        => $id,
+			'title'     => get_the_title( $id ),
+			'filename'  => $file ? wp_basename( $file ) : '',
+			'thumbnail' => wp_get_attachment_image(
+				$id,
+				array( 38, 36 ),
+				true,
+				array(
+					'class' => 'pinkynail',
+					'alt'   => '',
+				)
+			),
+		);
+	}
+
+	/**
+	 * Everything a row says about an image: what it is, and what it is now.
+	 *
+	 * The savings are read from the compression metadata rather than from a
+	 * record of the run, so an image shows what it saved whether that happened
+	 * a moment ago or in a run last month.
+	 *
+	 * The status is left to the caller: the same description serves an image
+	 * being optimized, one still waiting, and one already dealt with.
+	 *
+	 * @param int $id Attachment ID.
+	 * @return array
+	 */
+	private function describe_in_full( $id ) {
+		$image = new Tiny_Image( $this->settings, $id );
+		$stats = $image->get_statistics(
+			$this->settings->get_sizes(),
+			$this->settings->get_active_tinify_sizes()
+		);
+
+		return array_merge(
+			self::entry_defaults(),
+			$this->describe( $id ),
+			array(
+				'sizes'            => self::size_count( $stats ),
+				'sizes_compressed' => $stats['image_sizes_compressed'],
+				'sizes_converted'  => $stats['image_sizes_converted'],
+				'initial_size'     => size_format( $stats['initial_total_size'], 1 ),
+				'optimized_size'   => size_format( $stats['compressed_total_size'], 1 ),
+				'savings'          => $image->get_savings( $stats ),
+			)
+		);
+	}
+
+
+	/**
+	 * Image sizes the plugin looks after for an image.
+	 *
+	 * @param array $stats Statistics of a single image.
+	 * @return int
+	 */
+	private static function size_count( array $stats ) {
+		return $stats['image_sizes_optimized'] + $stats['available_unoptimized_sizes'];
+	}
+
+	/**
+	 * Everything a row on the page can show, empty.
+	 *
+	 * @return array
+	 */
+	private static function entry_defaults() {
+		return array(
+			'id'               => 0,
+			'title'            => '',
+			'filename'         => '',
+			'status'           => self::STATUS_SKIPPED,
+			'message'          => null,
+			'sizes'            => 0,
+			'sizes_compressed' => 0,
+			'sizes_converted'  => 0,
+			'initial_size'     => null,
+			'optimized_size'   => null,
+			'savings'          => 0,
+			'thumbnail'        => '',
+			'progress'         => 0,
+		);
+	}
+
+	/**
+	 * Note that the run moved on, so a slow image is not read as a stall.
+	 */
+	private function touch() {
 		$run = self::get_run();
 
 		$run['updated_at'] = time();
-		$run['log'][]      = array_merge(
-			array(
-				'id'               => 0,
-				'title'            => '',
-				'status'           => self::STATUS_SKIPPED,
-				'message'          => null,
-				'sizes_compressed' => 0,
-				'sizes_converted'  => 0,
-				'initial_size'     => null,
-				'optimized_size'   => null,
-				'savings'          => 0,
-				'thumbnail'        => '',
-				'size_change'      => 0,
-			),
-			$entry
-		);
-
-		if ( count( $run['log'] ) > self::LOG_SIZE ) {
-			$run['log'] = array_slice( $run['log'], -self::LOG_SIZE );
-		}
 
 		self::save_run( $run );
 	}
@@ -897,7 +1222,6 @@ class Tiny_Bulk_Queue extends Tiny_Vendor_WP_Background_Process {
 			'started_at'    => null,
 			'updated_at'    => null,
 			'finished_at'   => null,
-			'log'           => array(),
 		);
 	}
 }

@@ -1,0 +1,521 @@
+/*
+ * Bulk optimization queue page.
+ *
+ * Laid out on its own rather than on the WordPress list table styles: the page
+ * is one card of rows that change while you watch them, not a table you sort.
+ */
+
+.tiny-bulk-queue {
+	margin: 20px 20px 40px 0;
+	color: #020618;
+}
+
+/* Beats the display rules further down that would otherwise show a hidden button. */
+.tiny-bulk-queue [hidden] {
+	display: none !important;
+}
+
+.tiny-bulk-queue .tiny-queue-header {
+	margin-bottom: 30px;
+}
+
+.tiny-bulk-queue .tiny-queue-header h1 {
+	margin: 0 0 8px;
+	padding: 0;
+	font-size: 24px;
+	font-weight: 700;
+	line-height: 32px;
+	color: #020618;
+}
+
+.tiny-bulk-queue .tiny-queue-header p {
+	margin: 0;
+	font-size: 14px;
+	line-height: 18px;
+	color: #494949;
+}
+
+.tiny-bulk-queue .tiny-queue-columns {
+	display: flex;
+	align-items: flex-start;
+	gap: 20px;
+}
+
+.tiny-bulk-queue .tiny-queue-card,
+.tiny-bulk-queue .tiny-queue-panel {
+	border: 1px solid #e1e1e1;
+	border-radius: 10px;
+	background-color: #fff;
+}
+
+.tiny-bulk-queue .tiny-queue-card {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 24px;
+	min-width: 0;
+	padding: 24px;
+}
+
+/*
+ * With nothing to report the card is a line of text; keep it the height the
+ * design gives it so it does not shrink to a sliver beside the statistics.
+ */
+.tiny-bulk-queue .tiny-queue-card.is-empty {
+	min-height: 335px;
+}
+
+.tiny-bulk-queue .tiny-queue-sidebar {
+	flex: 0 0 299px;
+	width: 299px;
+}
+
+/* Action --------------------------------------------------------------- */
+
+.tiny-bulk-queue .tiny-queue-actions {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	width: 100%;
+}
+
+.tiny-bulk-queue .tiny-queue-run-spinner {
+	display: inline-flex;
+	flex: 0 0 auto;
+	animation: tiny-queue-spin 0.8s linear infinite;
+}
+
+.tiny-bulk-queue .tiny-queue-actions .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	height: auto;
+	padding: 10px 24px;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 20px;
+}
+
+.tiny-bulk-queue .tiny-queue-actions .button svg {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 16px;
+	/* Follows the button label, so it stays legible in every admin colour scheme. */
+	fill: currentColor;
+}
+
+/* Progress ------------------------------------------------------------- */
+
+.tiny-bulk-queue .tiny-queue-progress-block {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	align-items: center;
+}
+
+.tiny-bulk-queue .tiny-queue-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: #020618;
+}
+
+.tiny-bulk-queue .tiny-queue-status-icon .dashicons-yes-alt {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	color: #00a63e;
+}
+
+.tiny-bulk-queue .tiny-queue-subtitle {
+	max-width: 400px;
+	margin: 0;
+	font-size: 13px;
+	line-height: 20.8px;
+	color: #718096;
+	text-align: center;
+}
+
+.tiny-bulk-queue .tiny-queue-progress {
+	width: 100%;
+}
+
+.tiny-bulk-queue .tiny-queue-track {
+	overflow: hidden;
+	height: 16px;
+	border-radius: 8px;
+	background-color: #eaeaea;
+}
+
+.tiny-bulk-queue .tiny-queue-fill {
+	width: 0;
+	height: 100%;
+	border-radius: 8px;
+	background-color: #3858e9;
+	transition: width 0.4s ease;
+}
+
+.tiny-bulk-queue .tiny-queue-progress-labels {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.tiny-bulk-queue .tiny-queue-percentage {
+	font-weight: 700;
+	color: #3858e9;
+}
+
+/* Nothing left to do: the bar stops being progress and becomes a result. */
+.tiny-bulk-queue .tiny-queue-fill.is-complete {
+	background-color: #00a63e;
+}
+
+.tiny-bulk-queue .tiny-queue-percentage.is-complete {
+	color: #00a63e;
+}
+
+.tiny-bulk-queue .tiny-queue-remaining {
+	color: #718096;
+}
+
+.tiny-bulk-queue .tiny-queue-details {
+	box-sizing: border-box;
+	width: 100%;
+	margin: 0;
+	padding: 10px 16px;
+	border: 1px solid #a6cef5;
+	border-radius: 6px;
+	background-color: #f0f9ff;
+	font-size: 13px;
+	color: #1e2939;
+}
+
+.tiny-bulk-queue .tiny-queue-details strong {
+	font-weight: 700;
+}
+
+.tiny-bulk-queue .tiny-queue-details.is-error {
+	border-color: #f0b1b1;
+	background-color: #fcf0f1;
+}
+
+/* Rows ----------------------------------------------------------------- */
+
+.tiny-bulk-queue .tiny-queue-list h2 {
+	margin: 0 0 10px;
+	padding: 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: #020618;
+}
+
+.tiny-bulk-queue .tiny-queue-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 16px;
+	background-color: #fff;
+}
+
+.tiny-bulk-queue .tiny-queue-row.is-processing {
+	background-color: #f0f9ff;
+}
+
+.tiny-bulk-queue .tiny-queue-row-left {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+
+.tiny-bulk-queue .tiny-queue-row-icon {
+	display: flex;
+	flex: 0 0 24px;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 20px;
+}
+
+.tiny-bulk-queue .tiny-queue-row-icon .dashicons {
+	width: 20px;
+	height: 20px;
+	font-size: 20px;
+}
+
+.tiny-bulk-queue .tiny-queue-row-icon .dashicons-yes {
+	color: #00a63e;
+}
+
+.tiny-bulk-queue .tiny-queue-row-icon .dashicons-minus {
+	color: #718096;
+}
+
+.tiny-bulk-queue .tiny-queue-row-icon .dashicons-warning {
+	color: #d63638;
+}
+
+.tiny-bulk-queue .tiny-queue-dot {
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background-color: #cbd5e0;
+}
+
+.tiny-bulk-queue .tiny-queue-thumbnail {
+	display: block;
+	flex: 0 0 38px;
+	overflow: hidden;
+	width: 38px;
+	height: 36px;
+	border: 1px solid #e1e1e1;
+	border-radius: 4px;
+	background-color: #f6f7f7;
+}
+
+.tiny-bulk-queue .tiny-queue-thumbnail img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.tiny-bulk-queue .tiny-queue-row-meta {
+	min-width: 0;
+}
+
+.tiny-bulk-queue .tiny-queue-row-title {
+	overflow: hidden;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 15px;
+	color: #020618;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tiny-bulk-queue .tiny-queue-row-file {
+	overflow: hidden;
+	margin-top: 2px;
+	font-size: 11px;
+	line-height: 13px;
+	color: #494949;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tiny-bulk-queue .tiny-queue-row-right {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 24px;
+}
+
+.tiny-bulk-queue .tiny-queue-row-initial {
+	width: 100px;
+	text-align: right;
+}
+
+.tiny-bulk-queue .tiny-queue-row-initial b {
+	display: block;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 14px;
+	color: #020618;
+}
+
+.tiny-bulk-queue .tiny-queue-row-initial span {
+	display: block;
+	font-size: 11px;
+	line-height: 13px;
+	color: #718096;
+}
+
+.tiny-bulk-queue .tiny-queue-row-result {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	width: 180px;
+	text-align: right;
+}
+
+.tiny-bulk-queue .tiny-queue-result-primary {
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 14px;
+}
+
+.tiny-bulk-queue .tiny-queue-result-primary span {
+	font-weight: 400;
+}
+
+.tiny-bulk-queue .tiny-queue-result-secondary {
+	font-size: 11px;
+	line-height: 13px;
+}
+
+.tiny-bulk-queue .tiny-queue-row-result.is-saved {
+	color: #00a63e;
+}
+
+.tiny-bulk-queue .tiny-queue-row-result.is-waiting,
+.tiny-bulk-queue .tiny-queue-row-result.is-skipped {
+	color: #718096;
+}
+
+.tiny-bulk-queue .tiny-queue-row-result.is-failed {
+	color: #d63638;
+}
+
+.tiny-bulk-queue .tiny-queue-row-result.is-active {
+	color: #3858e9;
+}
+
+.tiny-bulk-queue .tiny-queue-row-result.is-active .tiny-queue-result-primary {
+	font-size: 11px;
+	line-height: 13px;
+}
+
+.tiny-bulk-queue .tiny-queue-mini-track {
+	overflow: hidden;
+	width: 120px;
+	height: 4px;
+	margin-top: 4px;
+	border-radius: 2px;
+	background-color: #d9d9d9;
+}
+
+.tiny-bulk-queue .tiny-queue-mini-fill {
+	width: 0;
+	height: 100%;
+	background-color: #3858e9;
+	transition: width 0.4s ease;
+}
+
+/* Sidebar -------------------------------------------------------------- */
+
+.tiny-bulk-queue .tiny-queue-panel {
+	padding: 20px;
+}
+
+.tiny-bulk-queue .tiny-queue-panel h2 {
+	margin: 0 0 16px;
+	padding: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: #020618;
+}
+
+.tiny-bulk-queue .tiny-queue-stat {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 0;
+}
+
+.tiny-bulk-queue .tiny-queue-stat span {
+	font-size: 13px;
+	color: #494949;
+}
+
+.tiny-bulk-queue .tiny-queue-stat strong {
+	font-size: 14px;
+	font-weight: 700;
+	color: #020618;
+	white-space: nowrap;
+}
+
+.tiny-bulk-queue .tiny-queue-stat strong.tiny-queue-savings {
+	color: #00a63e;
+}
+
+.tiny-bulk-queue .tiny-queue-panel hr {
+	margin: 16px 0;
+	border: 0;
+	border-top: 1px solid #e1e1e1;
+}
+
+.tiny-bulk-queue .tiny-queue-note {
+	margin: 16px 0 0;
+	font-size: 12px;
+	color: #718096;
+}
+
+/* Spinner -------------------------------------------------------------- */
+
+.tiny-bulk-queue .tiny-queue-spinner {
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	border: 2px solid #d5ddfb;
+	border-top-color: #3858e9;
+	border-radius: 50%;
+	animation: tiny-queue-spin 0.8s linear infinite;
+}
+
+@keyframes tiny-queue-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tiny-bulk-queue .tiny-queue-spinner,
+	.tiny-bulk-queue .tiny-queue-run-spinner {
+		animation-duration: 3s;
+	}
+
+	.tiny-bulk-queue .tiny-queue-fill,
+	.tiny-bulk-queue .tiny-queue-mini-fill {
+		transition: none;
+	}
+}
+
+/* Narrow screens ------------------------------------------------------- */
+
+@media only screen and (max-width: 960px) {
+	.tiny-bulk-queue .tiny-queue-columns {
+		flex-direction: column;
+	}
+
+	.tiny-bulk-queue .tiny-queue-card {
+		width: 100%;
+	}
+
+	.tiny-bulk-queue .tiny-queue-sidebar {
+		flex: 1 1 auto;
+		width: 100%;
+	}
+}
+
+@media only screen and (max-width: 782px) {
+	.tiny-bulk-queue .tiny-queue-row {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.tiny-bulk-queue .tiny-queue-row-right {
+		gap: 16px;
+		padding-left: 36px;
+	}
+
+	.tiny-bulk-queue .tiny-queue-row-initial,
+	.tiny-bulk-queue .tiny-queue-row-result {
+		width: auto;
+		text-align: left;
+	}
+
+	.tiny-bulk-queue .tiny-queue-row-result {
+		align-items: flex-start;
+	}
+}

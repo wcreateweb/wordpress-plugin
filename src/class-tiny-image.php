@@ -260,6 +260,15 @@ class Tiny_Image {
 		$compressor = $this->settings->get_compressor();
 		$convert_to = $this->convert_to();
 
+		/* Denominator of the progress reported below; duplicates are skipped. */
+		$total_sizes     = 0;
+		$processed_sizes = 0;
+		foreach ( $unprocessed_sizes as $size ) {
+			if ( ! $size->is_duplicate() ) {
+				++$total_sizes;
+			}
+		}
+
 		foreach ( $unprocessed_sizes as $size_name => $size ) {
 			if ( ! $size->is_duplicate() ) {
 				$size->add_tiny_meta_start();
@@ -320,6 +329,27 @@ class Tiny_Image {
 				}
 				$this->add_wp_metadata( $size_name, $size );
 				$this->update_tiny_post_meta();
+				++$processed_sizes;
+
+				/**
+				 * Fires after each size of an image has been processed.
+				 *
+				 * Compressing one image is a series of requests to the API, one
+				 * per size. This reports how far along that series is, so a
+				 * caller can show progress within a single image.
+				 *
+				 * @since 3.9.0
+				 *
+				 * @param int $attachment_id The attachment ID.
+				 * @param int $processed     Sizes processed so far.
+				 * @param int $total         Sizes this compression will process.
+				 */
+				do_action(
+					'tiny_image_size_compressed',
+					$this->id,
+					$processed_sizes,
+					$total_sizes
+				);
 			}// End if().
 		}// End foreach().
 
