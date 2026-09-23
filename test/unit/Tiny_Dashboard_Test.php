@@ -40,7 +40,7 @@ class Tiny_Dashboard_Test extends Tiny_TestCase
 		$this->assertSame(1250, $data['images_total']);
 		$this->assertSame(330, $data['images_remaining']);
 		$this->assertSame(73, $data['percentage']);
-		$this->assertSame('panda-eating.png', $data['panda']);
+		$this->assertSame('panda-waiting.png', $data['panda']);
 	}
 
 	public function test_is_done_when_no_images_remain()
@@ -80,5 +80,66 @@ class Tiny_Dashboard_Test extends Tiny_TestCase
 	public function test_bytes_saved_is_never_negative()
 	{
 		$this->assertSame(0, $this->widget_data(10, 3, 3000, 5000)['bytes_saved']);
+	}
+
+	private function account_data($remaining_credits, $paying_state, $has_api_key = true)
+	{
+		return Tiny_Dashboard::get_widget_data(array(
+			'uploaded-images' => 10,
+			'optimized-image-sizes' => 0,
+			'available-unoptimized-sizes' => 0,
+			'optimized-library-size' => 0,
+			'unoptimized-library-size' => 0,
+			'estimated_credit_use' => 0,
+			'available-for-optimization' => array(array('ID' => 1, 'post_title' => 'image')),
+			'display-percentage' => 0,
+		), $remaining_credits, $paying_state, $has_api_key);
+	}
+
+	public function test_shows_remaining_credits_on_free_plan()
+	{
+		$this->assertSame(210, $this->account_data('210', 'free')['remaining_credits']);
+	}
+
+	public function test_shows_remaining_credits_on_fixed_plan()
+	{
+		$this->assertSame(210, $this->account_data(210, 'fixed')['remaining_credits']);
+	}
+
+	public function test_hides_remaining_credits_on_paid_plan()
+	{
+		$this->assertNull($this->account_data(210, 'paid')['remaining_credits']);
+	}
+
+	public function test_hides_remaining_credits_when_unknown()
+	{
+		$this->assertNull($this->account_data(false, 'free')['remaining_credits']);
+		$this->assertNull($this->account_data(210, false)['remaining_credits']);
+	}
+
+	public function test_has_no_notice_with_enough_credits()
+	{
+		$this->assertNull($this->account_data(100, 'free')['notice']);
+	}
+
+	public function test_notifies_low_credits_below_100()
+	{
+		$this->assertSame('low_credits', $this->account_data(99, 'free')['notice']);
+		$this->assertSame('low_credits', $this->account_data(0, 'fixed')['notice']);
+	}
+
+	public function test_does_not_notify_low_credits_on_paid_plan()
+	{
+		$this->assertNull($this->account_data(0, 'paid')['notice']);
+	}
+
+	public function test_notifies_missing_api_key()
+	{
+		$this->assertSame('no_api_key', $this->account_data(false, false, false)['notice']);
+	}
+
+	public function test_missing_api_key_takes_precedence_over_low_credits()
+	{
+		$this->assertSame('no_api_key', $this->account_data(10, 'free', false)['notice']);
 	}
 }

@@ -20,6 +20,14 @@
 class Tiny_Dashboard extends Tiny_WP_Base {
 
 	/**
+	 * Paying states whose accounts have a limited number of credits.
+	 * TODO: confirm the header value the API sends for fixed pricing plans.
+	 */
+	const LIMITED_CREDIT_PLANS = array( 'free', 'fixed' );
+
+	const LOW_CREDITS_THRESHOLD = 100;
+
+	/**
 	 * @var Tiny_Settings settings
 	 */
 	private $settings;
@@ -44,7 +52,7 @@ class Tiny_Dashboard extends Tiny_WP_Base {
 			self::NAME . '_dashboard_widget',
 			plugins_url( '/css/dashboard-widget.css', __FILE__ ),
 			array(),
-			self::wp_version(),
+			self::wp_version()
 		);
 
 		wp_add_dashboard_widget(
@@ -56,17 +64,26 @@ class Tiny_Dashboard extends Tiny_WP_Base {
 
 	public function add_widget_view() {
 		$optimization_statistics = Tiny_Bulk_Optimization::get_optimization_statistics( $this->settings );
-		$widget = self::get_widget_data( $optimization_statistics );
+		$widget = self::get_widget_data(
+			$optimization_statistics,
+			$this->settings->get_remaining_credits(),
+			$this->settings->get_paying_state(),
+			$this->settings->has_api_key()
+		);
+		$email_address = $this->settings->get_email_address();
 		include __DIR__ . '/views/dashboard-widget.php';
 	}
 
 	/**
 	 * Logic for the view
 	 *
-	 * @param array $optimization_stats See Tiny_Bulk_Optimization::get_optimization_statistics().
+	 * @param array        $optimization_stats See Tiny_Bulk_Optimization::get_optimization_statistics().
+	 * @param int|false    $remaining_credits  Stored account credits, false when unknown.
+	 * @param string|false $paying_state       Stored account paying state, false when unknown.
+	 * @param bool         $has_api_key
 	 * @return array
 	 */
-	public static function get_widget_data( $optimization_stats ) {
+	public static function get_widget_data( $optimization_stats, $remaining_credits = false, $paying_state = false, $has_api_key = true ) {
 		$images_remaining = count( $optimization_stats['available-for-optimization'] );
 		$bytes_total = $optimization_stats['unoptimized-library-size'];
 		$images_total = max( 0, intval( $optimization_stats['uploaded-images'] ) );
@@ -81,20 +98,29 @@ class Tiny_Dashboard extends Tiny_WP_Base {
 			: 0;
 		$percentage = max( 0, min( 100, $percentage ) );
 
+		$label = self::get_label_text($percentage);
+
 		if ( 0 === $images_total ) {
-			$status = 'empty';
-			$label = '';
+			$status = 'empty';	
 			$panda = 'panda-waiting.png';
 		} elseif ( 0 === $images_remaining ) {
 			$status = 'done';
-			$label = __( 'all done', 'tiny-compress-images' );
 			$panda = 'panda-laying.png';
 		} else {
 			$status = 'in_progress';
-			$label = $percentage >= 50
-				? __( 'almost there', 'tiny-compress-images' )
-				: __( 'keep going', 'tiny-compress-images' );
-			$panda = 'panda-eating.png';
+			$panda = 'panda-waiting.png';
+		}
+
+		$has_limited_credits = in_array( $paying_state, self::LIMITED_CREDIT_PLANS, true )
+			&& is_numeric( $remaining_credits );
+		$remaining_credits = $has_limited_credits ? intval( $remaining_credits ) : null;
+
+		if ( ! $has_api_key ) {
+			$notice = 'no_api_key';
+		} elseif ( null !== $remaining_credits && $remaining_credits < self::LOW_CREDITS_THRESHOLD ) {
+			$notice = 'low_credits';
+		} else {
+			$notice = null;
 		}
 
 		return array(
@@ -106,6 +132,27 @@ class Tiny_Dashboard extends Tiny_WP_Base {
 			'percentage' => $percentage,
 			'label' => $label,
 			'panda' => $panda,
+			'remaining_credits' => $remaining_credits,
+			'notice' => $notice,
 		);
+	}
+
+	private static function get_label_text($percentage) {
+		if ($percentage > 99) {
+			return __( 'optimized', 'tiny-compress-images' );
+		}
+		if ($percentage > 75) {
+			return __( 'amost there', 'tiny-compress-images' );
+		}
+
+		if ($percentage > 50) {
+			return __( 'halfway there', 'tiny-compress-images' );
+		}
+
+		if ($percentage === 0 ) {
+			return __( '', 'tiny-compress-images' );
+		}
+
+		return __( 'getting started', 'tiny-compress-images' );
 	}
 }

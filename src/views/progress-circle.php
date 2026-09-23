@@ -9,8 +9,8 @@
 <style>
 div.tiny-progress-circle {
 	position: relative;
-	width: 117px;
-	height: 117px;
+	width: 100px;
+	height: 100px;
 	flex-shrink: 0;
 }
 
@@ -21,7 +21,7 @@ div.tiny-progress-circle svg {
 
 div.tiny-progress-circle circle {
 	fill: none;
-	stroke-width: 21.31;
+	stroke-width: 8;
 }
 
 div.tiny-progress-circle circle.track {
@@ -29,8 +29,7 @@ div.tiny-progress-circle circle.track {
 }
 
 div.tiny-progress-circle circle.progress {
-	stroke: #00d974;
-	stroke-linecap: round;
+	stroke: #06d28b;
 	transition: stroke-dasharray 0.6s ease;
 }
 
@@ -60,10 +59,10 @@ div.tiny-progress-circle div.label {
 </style>
 
 <div class="tiny-progress-circle">
-	<svg width="117" height="117" viewBox="0 0 117 117" aria-hidden="true" focusable="false">
-		<circle class="track" cx="58.5" cy="58.5" r="47.844" pathLength="100" />
+	<svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+		<circle class="track" cx="50" cy="50" r="46" pathLength="100" />
 		<?php if ( $percentage > 0 ) { ?>
-			<circle class="progress" cx="58.5" cy="58.5" r="47.844" pathLength="100"
+			<circle class="progress" cx="50" cy="50" r="46" pathLength="100"
 				stroke-dasharray="<?php echo esc_attr( $percentage ); ?> 100" />
 		<?php } ?>
 	</svg>
